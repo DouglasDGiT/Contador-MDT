@@ -2,64 +2,71 @@ import cv2
 import json
 import os
 
+# ====================================
+# CONFIGURAÇÃO
+# ====================================
 
-def recortar_blisters(imagem_path, json_path, pasta_saida):
+MODELO = "rh_150_75"
 
-    print(f"\nProcessando: {imagem_path}")
+IMAGEM = "alinhadas/cartela_alinhada.png"
+JSON = f"modelos/{MODELO}/blisters.json"
+PASTA_SAIDA = f"recortes/{MODELO}"
 
-    os.makedirs(pasta_saida, exist_ok=True)
+# ====================================
+# CRIA PASTA DE SAÍDA
+# ====================================
 
-    imagem = cv2.imread(imagem_path)
+os.makedirs(PASTA_SAIDA, exist_ok=True)
 
-    if imagem is None:
-        raise Exception(
-            f"Erro ao carregar a imagem: {imagem_path}"
-        )
+# ====================================
+# CARREGA IMAGEM ALINHADA
+# ====================================
 
-    with open(json_path, "r") as f:
-        blisters = json.load(f)
+imagem = cv2.imread(IMAGEM)
 
-    contador = 0
+if imagem is None:
+    raise Exception(f"Erro ao carregar: {IMAGEM}")
 
-    for nome, dados in blisters.items():
+# ====================================
+# CARREGA COORDENADAS
+# ====================================
 
-        x, y, w, h = dados
+with open(JSON, "r", encoding="utf-8") as f:
+    blisters = json.load(f)
 
-        roi = imagem[y:y+h, x:x+w]
+# ====================================
+# RECORTA CADA CAVIDADE
+# ====================================
 
-        caminho_saida = os.path.join(
-            pasta_saida,
-            f"{nome}.png"
-        )
+contador = 0
 
-        cv2.imwrite(
-            caminho_saida,
-            roi
-        )
+for nome, dados in blisters.items():
 
-        contador += 1
+    x, y, w, h = dados
 
-        print(f"Salvo: {caminho_saida}")
+    roi = imagem[y:y+h, x:x+w]
 
-    print(
-        f"\n{contador} blisters recortados com sucesso."
+    caminho_saida = os.path.join(
+        PASTA_SAIDA,
+        f"{nome}.png"
     )
 
-
-if __name__ == "__main__":
-
-    JSON = "config/blisters.json"
-
-    # Recortes da referência
-    recortar_blisters(
-        imagem_path="imagens/referencia/cartela_referencia.png",
-        json_path=JSON,
-        pasta_saida="recortes/recortes_referencia"
+    cv2.imwrite(
+        caminho_saida,
+        roi
     )
 
-    # Recortes da cartela alinhada
-    recortar_blisters(
-        imagem_path="alinhadas/cartela_alinhada.png",
-        json_path=JSON,
-        pasta_saida="recortes/recortes_teste"
-    )
+    contador += 1
+
+    print(f"Salvo: {caminho_saida}")
+
+# ====================================
+# FINALIZAÇÃO
+# ====================================
+
+print()
+print("================================")
+print(f"{contador} cavidades recortadas")
+print("================================")
+print()
+print(f"Pasta: {PASTA_SAIDA}")

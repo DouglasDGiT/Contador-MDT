@@ -2,94 +2,49 @@ import cv2
 import os
 import numpy as np
 
-PASTA_TESTE = "recortes/recortes_teste"
+MODELO = "rh_150_75"
+PASTA_TESTE = f"recortes/{MODELO}"
 
 resultados = []
 
-# ==========================
-# ANALISA TODOS OS BLISTERS
-# ==========================
-
 for arquivo in sorted(os.listdir(PASTA_TESTE)):
+    if not arquivo.endswith(".png"):
+        continue
 
-    caminho = os.path.join(
-        PASTA_TESTE,
-        arquivo
-    )
-
-    img = cv2.imread(
-        caminho,
-        cv2.IMREAD_GRAYSCALE
-    )
-
+    caminho = os.path.join(PASTA_TESTE, arquivo)
+    img = cv2.imread(caminho)
     if img is None:
         continue
 
-    # Região central do blister
-    h, w = img.shape
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    saturacao = hsv[:, :, 1]
 
-    miolo = img[
-        int(h * 0.20):int(h * 0.80),
-        int(w * 0.20):int(w * 0.80)
-    ]
+    pct_saturado = np.sum(saturacao > 60) / saturacao.size * 100
 
-    # Desvio padrão
-    score = np.std(miolo)
+    resultados.append((arquivo, pct_saturado))
 
-    resultados.append(
-        (arquivo, score)
-    )
+if len(resultados) == 0:
+    raise Exception(f"Nenhuma imagem encontrada em {PASTA_TESTE}")
 
-# ==================================
-# CÁLCULO AUTOMÁTICO DO LIMIAR
-# ==================================
+valores = np.array([s for _, s in resultados])
+mediana = np.median(valores)
+mad = np.median(np.abs(valores - mediana)) * 1.4826  # equivalente robusto ao desvio padrão
 
-valores = [score for _, score in resultados]
+# Como a maioria dos scores é ~0, usamos limiares absolutos + estatísticos,
+# o que fica mais seguro nesse tipo de distribuição (muitos zeros, poucos outliers)
+LIMIAR_TOMADO_ABSOLUTO = 15.0    # % de pixels saturados -- ajuste conforme necessário
+LIMIAR_POSSIVEL_ABSOLUTO = 5.0
 
-media = np.mean(valores)
-desvio = np.std(valores)
+resultados.sort(key=lambda x: x[1], reverse=True)
 
-# 2 desvios padrão acima da média
-limiar = media + (2 * desvio)
-
-# ==================================
-# ORDENA RESULTADOS
-# ==================================
-
-resultados.sort(
-    key=lambda x: x[1],
-    reverse=True
-)
-
-print("\n==============================")
-print("AUDITORIA DE CONSUMO MDT")
-print("==============================\n")
-
-print(f"Média: {media:.2f}")
-print(f"Desvio padrão global: {desvio:.2f}")
-print(f"Limiar calculado: {limiar:.2f}")
-
-print("\nRESULTADOS:\n")
-
-# ==================================
-# CLASSIFICAÇÃO
-# ==================================
+print(f"\nMediana: {mediana:.2f}% | MAD: {mad:.2f}\n")
+print("RESULTADOS:\n")
 
 for nome, score in resultados:
-
-    distancia = score - limiar
-
-    if distancia >= 3:
+    if score > LIMIAR_TOMADO_ABSOLUTO:
         status = "🔴 TOMADO (ALTA CONFIANÇA)"
-
-    elif distancia >= 0:
+    elif score > LIMIAR_POSSIVEL_ABSOLUTO:
         status = "🟡 POSSÍVEL CONSUMO"
-
     else:
         status = "🟢 INTACTO"
-
-    print(
-    f"{nome}: {score:.2f} -> {status}"
-)
-
-print("\nFim da análise.")
+    print(f"{nome}: {score:.2f}% saturado | {status}")
