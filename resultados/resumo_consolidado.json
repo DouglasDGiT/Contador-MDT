@@ -1,0 +1,28 @@
+[
+    {
+        "modelo": "rh_150_75",
+        "total": 28,
+        "tomados": 1,
+        "posicoes_tomadas": [
+            "P1"
+        ],
+        "possivel_consumo": 0,
+        "posicoes_possivel": [],
+        "intactos": 27
+    },
+    {
+        "modelo": "rh_300_150",
+        "total": 10,
+        "tomados": 1,
+        "posicoes_tomadas": [
+            "P4"
+        ],
+        "possivel_consumo": 3,
+        "posicoes_possivel": [
+            "P2",
+            "P9",
+            "P7"
+        ],
+        "intactos": 6
+    }
+]

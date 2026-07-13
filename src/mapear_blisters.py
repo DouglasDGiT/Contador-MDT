@@ -11,8 +11,8 @@ SAIDA_JSON = f"modelos/{MODELO}/blisters.json"
 # RAIO_X = metade da LARGURA do comprimido, em pixels
 # RAIO_Y = metade da ALTURA do comprimido, em pixels
 # (meça no Paint/editor: largura e altura do domo separadamente)
-RAIO_X = 62
-RAIO_Y = 100   # aumente até a caixa cobrir topo/base do domo
+RAIO_X = 74
+RAIO_Y = 120   # aumente até a caixa cobrir topo/base do domo
 
 ZOOM = 1.0
 

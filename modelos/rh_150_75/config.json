@@ -1,0 +1,11 @@
+{
+    "metrica": "matiz_verde_amarelo",
+    "direcao": "alta_e_tomado",
+    "limiar_tomado": 15.0,
+    "limiar_possivel": 5.0,
+    "parametros_metrica": {
+        "matiz_min": 25,
+        "matiz_max": 95,
+        "saturacao_min": 30
+    }
+}

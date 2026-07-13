@@ -1,72 +1,52 @@
 import cv2
 import json
 import os
+import sys
 
-# ====================================
-# CONFIGURAÇÃO
-# ====================================
 
-MODELO = "rh_150_75"
+def recortar_blisters(modelo):
+    """
+    Recorta as cavidades da cartela alinhada de um modelo específico,
+    usando as coordenadas salvas em modelos/{modelo}/blisters.json.
+    Retorna a pasta onde os recortes foram salvos.
+    """
+    imagem_path = f"alinhadas/{modelo}_alinhada.png"
+    json_path = f"modelos/{modelo}/blisters.json"
+    pasta_saida = f"recortes/{modelo}"
 
-IMAGEM = "alinhadas/cartela_alinhada.png"
-JSON = f"modelos/{MODELO}/blisters.json"
-PASTA_SAIDA = f"recortes/{MODELO}"
+    os.makedirs(pasta_saida, exist_ok=True)
 
-# ====================================
-# CRIA PASTA DE SAÍDA
-# ====================================
+    imagem = cv2.imread(imagem_path)
+    if imagem is None:
+        raise Exception(f"Erro ao carregar: {imagem_path}")
 
-os.makedirs(PASTA_SAIDA, exist_ok=True)
+    with open(json_path, "r", encoding="utf-8") as f:
+        blisters = json.load(f)
 
-# ====================================
-# CARREGA IMAGEM ALINHADA
-# ====================================
+    contador = 0
+    for nome, dados in blisters.items():
+        x, y, w, h = dados
+        roi = imagem[y:y + h, x:x + w]
+        caminho_saida = os.path.join(pasta_saida, f"{nome}.png")
+        cv2.imwrite(caminho_saida, roi)
+        contador += 1
+        print(f"Salvo: {caminho_saida}")
 
-imagem = cv2.imread(IMAGEM)
+    print()
+    print("================================")
+    print(f"{contador} cavidades recortadas")
+    print("================================")
+    print()
+    print(f"Modelo: {modelo}")
+    print(f"Pasta: {pasta_saida}")
 
-if imagem is None:
-    raise Exception(f"Erro ao carregar: {IMAGEM}")
+    return pasta_saida
 
-# ====================================
-# CARREGA COORDENADAS
-# ====================================
 
-with open(JSON, "r", encoding="utf-8") as f:
-    blisters = json.load(f)
-
-# ====================================
-# RECORTA CADA CAVIDADE
-# ====================================
-
-contador = 0
-
-for nome, dados in blisters.items():
-
-    x, y, w, h = dados
-
-    roi = imagem[y:y+h, x:x+w]
-
-    caminho_saida = os.path.join(
-        PASTA_SAIDA,
-        f"{nome}.png"
-    )
-
-    cv2.imwrite(
-        caminho_saida,
-        roi
-    )
-
-    contador += 1
-
-    print(f"Salvo: {caminho_saida}")
-
-# ====================================
-# FINALIZAÇÃO
-# ====================================
-
-print()
-print("================================")
-print(f"{contador} cavidades recortadas")
-print("================================")
-print()
-print(f"Pasta: {PASTA_SAIDA}")
+# Permite continuar rodando este arquivo sozinho pelo terminal, para debug:
+# python src/recortar_blisters.py rh_150_75
+if __name__ == "__main__":
+    modelo_cli = "rh_150_75"
+    if len(sys.argv) > 1:
+        modelo_cli = sys.argv[1]
+    recortar_blisters(modelo_cli)
