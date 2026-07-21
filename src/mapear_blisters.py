@@ -3,7 +3,7 @@ import json
 import os
 import numpy as np
 
-MODELO = "rh_300_150"
+MODELO = "rhze"
 IMAGEM = f"modelos/{MODELO}/referencia.png"
 SAIDA_JSON = f"modelos/{MODELO}/blisters.json"
 
@@ -11,8 +11,8 @@ SAIDA_JSON = f"modelos/{MODELO}/blisters.json"
 # RAIO_X = metade da LARGURA do comprimido, em pixels
 # RAIO_Y = metade da ALTURA do comprimido, em pixels
 # (meça no Paint/editor: largura e altura do domo separadamente)
-RAIO_X = 74
-RAIO_Y = 120   # aumente até a caixa cobrir topo/base do domo
+RAIO_X = 90
+RAIO_Y = 132   # aumente até a caixa cobrir topo/base do domo
 
 ZOOM = 1.0
 

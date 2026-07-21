@@ -2,7 +2,7 @@ import cv2
 import json
 import os
 
-MODELO = "rh_300_150"
+MODELO = "rhze"
 IMAGEM = f"modelos/{MODELO}/referencia.png"
 SAIDA_JSON = f"modelos/{MODELO}/pontos_controle.json"
 
