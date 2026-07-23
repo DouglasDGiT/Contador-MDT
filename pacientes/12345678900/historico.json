@@ -1,0 +1,112 @@
+[
+    {
+        "data": "2026-05-10",
+        "leituras": [
+            {
+                "modelo": "rhze",
+                "total": 6,
+                "tomados": 3,
+                "posicoes_tomadas": [
+                    "P1",
+                    "P2",
+                    "P3"
+                ],
+                "possivel_consumo": 0,
+                "posicoes_possivel": [],
+                "intactos": 3
+            }
+        ]
+    },
+    {
+        "data": "2026-05-13",
+        "leituras": [
+            {
+                "modelo": "rhze",
+                "total": 6,
+                "tomados": 5,
+                "posicoes_tomadas": [
+                    "P1",
+                    "P2",
+                    "P3",
+                    "P4",
+                    "P5"
+                ],
+                "possivel_consumo": 0,
+                "posicoes_possivel": [],
+                "intactos": 1
+            }
+        ]
+    },
+    {
+        "data": "2026-05-16",
+        "leituras": [
+            {
+                "modelo": "rhze",
+                "total": 6,
+                "tomados": 2,
+                "posicoes_tomadas": [
+                    "P1",
+                    "P2"
+                ],
+                "possivel_consumo": 0,
+                "posicoes_possivel": [],
+                "intactos": 4
+            }
+        ]
+    },
+    {
+        "data": "2026-05-10",
+        "leituras": [
+            {
+                "modelo": "rhze",
+                "total": 6,
+                "tomados": 3,
+                "posicoes_tomadas": [
+                    "P1",
+                    "P2",
+                    "P3"
+                ],
+                "possivel_consumo": 0,
+                "posicoes_possivel": [],
+                "intactos": 3
+            }
+        ]
+    },
+    {
+        "data": "2026-05-13",
+        "leituras": [
+            {
+                "modelo": "rhze",
+                "total": 6,
+                "tomados": 5,
+                "posicoes_tomadas": [
+                    "P1",
+                    "P2",
+                    "P3",
+                    "P4",
+                    "P5"
+                ],
+                "possivel_consumo": 0,
+                "posicoes_possivel": [],
+                "intactos": 1
+            }
+        ]
+    },
+    {
+        "data": "2026-05-16",
+        "leituras": [
+            {
+                "modelo": "rhze",
+                "total": 6,
+                "tomados": 2,
+                "posicoes_tomadas": [
+                    "P1",
+                    "P2"
+                ],
+                "possivel_consumo": 0,
+                "posicoes_possivel": [],
+                "intactos": 4
+            }
+        ]
+    }
+]

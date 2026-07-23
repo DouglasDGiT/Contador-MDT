@@ -1,0 +1,53 @@
+﻿{
+    "fase_intensiva": {
+        "duracao_meses": 2,
+        "esquema": "RHZE",
+        "modelo_comprimido": "rhze",
+        "descricao": "150/75/400/275 mg - Rifampicina + Isoniazida + Pirazinamida + Etambutol",
+        "faixas_peso": [
+            {"peso_min": 20, "peso_max": 35, "comprimidos_por_dia": 2},
+            {"peso_min": 36, "peso_max": 50, "comprimidos_por_dia": 3},
+            {"peso_min": 51, "peso_max": 70, "comprimidos_por_dia": 4},
+            {"peso_min": 71, "peso_max": null, "comprimidos_por_dia": 5}
+        ]
+    },
+    "fase_manutencao": {
+        "duracao_meses": 4,
+        "esquema": "RH",
+        "descricao": "Rifampicina + Isoniazida -- pode ser composto de comprimidos 300/150mg e/ou 150/75mg",
+        "faixas_peso": [
+            {
+                "peso_min": 20, "peso_max": 35,
+                "opcoes": [
+                    {"rh_300_150": 1},
+                    {"rh_150_75": 2}
+                ]
+            },
+            {
+                "peso_min": 36, "peso_max": 50,
+                "opcoes": [
+                    {"rh_300_150": 1, "rh_150_75": 1},
+                    {"rh_150_75": 3}
+                ]
+            },
+            {
+                "peso_min": 51, "peso_max": 70,
+                "opcoes": [
+                    {"rh_300_150": 2},
+                    {"rh_150_75": 4}
+                ]
+            },
+            {
+                "peso_min": 71, "peso_max": null,
+                "opcoes": [
+                    {"rh_300_150": 2, "rh_150_75": 1},
+                    {"rh_150_75": 5}
+                ]
+            }
+        ]
+    },
+    "observacoes": {
+        "fonte": "RATIONAL PHARMACEUTICAL MANAGEMENT PLUS, 2005; WHO, 2003. Adaptado de BRASIL, 2011 (Quadro 20).",
+        "nota_1": "A apresentacao 300/150mg em comprimido deve ser adotada assim que disponivel."
+    }
+}

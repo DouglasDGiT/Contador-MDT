@@ -2,16 +2,15 @@ import os
 import sys
 import json
 import shutil
+from datetime import date
 
-# Garante que 'src' está no caminho de import, e importa as funções
-# diretamente dos outros scripts -- tudo roda no mesmo processo Python,
-# então não existe risco de rodar uma versão desatualizada de arquivo
-# salva no disco (o que já causou bugs difíceis de rastrear antes).
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from alinhar_cartela import alinhar_cartela
 from recortar_blisters import recortar_blisters
 from comparar_blisters import comparar_blisters
+from pacientes import buscar_paciente, cadastrar_paciente
+from adesao import registrar_leitura, calcular_adesao, imprimir_relatorio_adesao
 
 PASTA_MODELOS = "modelos"
 PASTA_UPLOADS = "imagens/uploads"
@@ -35,6 +34,44 @@ def listar_modelos_disponiveis():
         modelos.append((nome, faltando))
 
     return modelos
+
+
+def identificar_paciente():
+    """
+    Pede o ID do paciente (CPF, no sistema real). Se não existir, oferece
+    cadastro na hora. Retorna o registro do paciente.
+    """
+    print()
+    print("====================================")
+    print("IDENTIFICAÇÃO DO PACIENTE")
+    print("====================================")
+
+    paciente_id = input("CPF do paciente: ").strip()
+
+    paciente = buscar_paciente(paciente_id)
+
+    if paciente is not None:
+        print(f"Paciente encontrado: {paciente['nome']} "
+              f"(peso: {paciente['peso']}kg, início: {paciente['data_inicio_tratamento']})")
+
+        atualizar = input("Atualizar peso cadastrado? (s/n): ").strip().lower()
+        if atualizar == "s":
+            from pacientes import atualizar_peso
+            novo_peso = float(input("Novo peso (kg): ").strip())
+            paciente = atualizar_peso(paciente_id, novo_peso)
+
+        return paciente
+
+    print("Paciente não encontrado. Cadastro necessário.")
+    nome = input("Nome do paciente: ").strip()
+    peso = float(input("Peso (kg): ").strip())
+    data_inicio = input(
+        f"Data de início do tratamento (AAAA-MM-DD, ENTER para hoje [{date.today()}]): "
+    ).strip()
+    if data_inicio == "":
+        data_inicio = str(date.today())
+
+    return cadastrar_paciente(paciente_id, nome, peso, data_inicio)
 
 
 def escolher_cartelas_para_processar():
@@ -93,10 +130,6 @@ def escolher_cartelas_para_processar():
 
 
 def processar_cartela(modelo, caminho_foto):
-    """
-    Roda o pipeline completo (copiar foto -> alinhar -> recortar -> analisar)
-    para uma única cartela, devolvendo o resumo estruturado.
-    """
     print()
     print(f"==== Processando modelo: {modelo} ====")
     print(f"Foto: {caminho_foto}")
@@ -127,22 +160,18 @@ def processar_cartela(modelo, caminho_foto):
     return {"modelo": modelo, "erro": None, "resultados": resultados}
 
 
-def imprimir_resumo_consolidado(relatorios):
-    print()
-    print("========================================")
-    print("RESUMO CONSOLIDADO")
-    print("========================================")
-
-    resumo_json = []
-
+def montar_resumo_consolidado(relatorios):
+    """
+    Monta o resumo no mesmo formato que já era salvo em
+    resultados/resumo_consolidado.json, e retorna a lista (não só imprime),
+    para poder ser passada para registrar_leitura().
+    """
+    resumo = []
     for r in relatorios:
         modelo = r["modelo"]
-        print()
-        print(f"--- {modelo} ---")
 
         if r["erro"]:
-            print(f"  ERRO: {r['erro']}")
-            resumo_json.append({"modelo": modelo, "erro": r["erro"]})
+            resumo.append({"modelo": modelo, "erro": r["erro"]})
             continue
 
         tomados = [x for x in r["resultados"] if x["status"] == "TOMADO"]
@@ -150,12 +179,7 @@ def imprimir_resumo_consolidado(relatorios):
         intactos = [x for x in r["resultados"] if x["status"] == "INTACTO"]
         total = len(r["resultados"])
 
-        print(f"  Total de posições: {total}")
-        print(f"  Tomados: {len(tomados)} {[t['posicao'] for t in tomados] if tomados else ''}")
-        print(f"  Possível consumo: {len(possiveis)} {[p['posicao'] for p in possiveis] if possiveis else ''}")
-        print(f"  Intactos: {len(intactos)}")
-
-        resumo_json.append({
+        resumo.append({
             "modelo": modelo,
             "total": total,
             "tomados": len(tomados),
@@ -165,13 +189,37 @@ def imprimir_resumo_consolidado(relatorios):
             "intactos": len(intactos),
         })
 
+    return resumo
+
+
+def imprimir_resumo_consolidado(resumo):
+    print()
+    print("========================================")
+    print("RESUMO CONSOLIDADO")
+    print("========================================")
+
+    for r in resumo:
+        modelo = r["modelo"]
+        print()
+        print(f"--- {modelo} ---")
+
+        if r.get("erro"):
+            print(f"  ERRO: {r['erro']}")
+            continue
+
+        print(f"  Total de posições: {r['total']}")
+        print(f"  Tomados: {r['tomados']} {r['posicoes_tomadas'] if r['posicoes_tomadas'] else ''}")
+        print(f"  Possível consumo: {r['possivel_consumo']} "
+              f"{r['posicoes_possivel'] if r['posicoes_possivel'] else ''}")
+        print(f"  Intactos: {r['intactos']}")
+
     print()
     print("========================================")
 
     os.makedirs("resultados", exist_ok=True)
     caminho_saida = os.path.join("resultados", "resumo_consolidado.json")
     with open(caminho_saida, "w", encoding="utf-8") as f:
-        json.dump(resumo_json, f, indent=4, ensure_ascii=False)
+        json.dump(resumo, f, indent=4, ensure_ascii=False)
     print(f"Resumo salvo em: {caminho_saida}")
 
 
@@ -180,6 +228,8 @@ def main():
     print("====================================")
     print("CONTADOR MDT - ANÁLISE MULTI-CARTELA")
     print("====================================")
+
+    paciente = identificar_paciente()
 
     cartelas = escolher_cartelas_para_processar()
 
@@ -192,7 +242,15 @@ def main():
         relatorio = processar_cartela(modelo, caminho_foto)
         relatorios.append(relatorio)
 
-    imprimir_resumo_consolidado(relatorios)
+    resumo = montar_resumo_consolidado(relatorios)
+    imprimir_resumo_consolidado(resumo)
+
+    # Registra a leitura no histórico do paciente e calcula aderência
+    data_hoje = str(date.today())
+    registrar_leitura(paciente["id"], data_hoje, resumo)
+
+    relatorio_adesao = calcular_adesao(paciente["id"], data_hoje)
+    imprimir_relatorio_adesao(relatorio_adesao)
 
 
 if __name__ == "__main__":
