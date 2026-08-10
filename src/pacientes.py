@@ -1,6 +1,7 @@
-import json
+﻿import json
 import os
 import re
+import unicodedata
 from datetime import date
 
 PASTA_PACIENTES = "pacientes"
@@ -29,12 +30,39 @@ def normalizar_id(paciente_id):
     return re.sub(r"[^0-9A-Za-z]", "", str(paciente_id))
 
 
-def cadastrar_paciente(paciente_id, nome, peso, data_inicio_tratamento):
+def normalizar_nome(nome):
+    """
+    Remove acentos, baixa para minúsculas e colapsa espaços extras, para
+    que "José da Silva", "jose  DA silva" e "JOSÉ DA SILVA" sejam tratados
+    como o mesmo texto na hora de buscar por nome.
+    """
+    sem_acento = unicodedata.normalize("NFKD", nome).encode("ASCII", "ignore").decode("ASCII")
+    return re.sub(r"\s+", " ", sem_acento.strip().lower())
+
+
+def buscar_pacientes_por_nome(nome_busca):
+    """
+    Busca pacientes cujo nome cadastrado bata (exatamente, após normalizar)
+    com o texto informado. Como nome NÃO é garantidamente único (diferente
+    do ID/SINAN), retorna uma LISTA -- pode vir vazia, com 1, ou com vários
+    resultados (nesse caso, quem chamou precisa desambiguar com o usuário).
+    """
+    alvo = normalizar_nome(nome_busca)
+    pacientes = _carregar_indice()
+    return [p for p in pacientes if normalizar_nome(p["nome"]) == alvo]
+
+
+def cadastrar_paciente(paciente_id, nome, peso, data_inicio_tratamento, esquema_manutencao=None):
     """
     Cadastra um novo paciente com ID único informado externamente
     (no sistema real, o CPF). Lança exceção se o ID já existir.
 
     data_inicio_tratamento: string no formato "YYYY-MM-DD"
+    esquema_manutencao: dict opcional com o esquema de manutenção JÁ
+        PRESCRITO PELO MÉDICO (ex: {"rh_300_150": 1}), usado quando o
+        paciente chegar na fase de manutenção. Pode ser definido depois,
+        via definir_esquema_manutencao(), se ainda não for conhecido no
+        momento do cadastro (comum, já que a fase intensiva vem primeiro).
     """
     paciente_id = normalizar_id(paciente_id)
 
@@ -51,6 +79,7 @@ def cadastrar_paciente(paciente_id, nome, peso, data_inicio_tratamento):
         "nome": nome,
         "peso": peso,
         "data_inicio_tratamento": data_inicio_tratamento,
+        "esquema_manutencao": esquema_manutencao,
     }
 
     pacientes.append(paciente)
@@ -61,6 +90,23 @@ def cadastrar_paciente(paciente_id, nome, peso, data_inicio_tratamento):
 
     print(f"Paciente cadastrado: {paciente['nome']} (id: {paciente['id']})")
     return paciente
+
+
+def definir_esquema_manutencao(paciente_id, esquema_manutencao):
+    """
+    Define ou atualiza o esquema de manutenção prescrito pelo médico
+    (ex: {"rh_300_150": 1} ou {"rh_150_75": 3}). Necessário antes de
+    calcular aderência na fase de manutenção.
+    """
+    paciente_id = normalizar_id(paciente_id)
+    pacientes = _carregar_indice()
+    for p in pacientes:
+        if p["id"] == paciente_id:
+            p["esquema_manutencao"] = esquema_manutencao
+            _salvar_indice(pacientes)
+            print(f"Esquema de manutenção definido para {p['nome']}: {esquema_manutencao}")
+            return p
+    raise Exception(f"Paciente não encontrado: {paciente_id}")
 
 
 def buscar_paciente(paciente_id):

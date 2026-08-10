@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resultado do envio</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="topo">
+    <div class="pilula-icone"></div>
+    <span>Contador MDT</span>
+  </div>
+
+  <div class="container">
+    {% if resultado.sucesso %}
+      <div class="resultado-card sucesso">
+        <span class="selo ok">Recebido</span>
+        <h1 style="font-size:1.3rem;">{{ resultado.mensagem }}</h1>
+
+        {% if resultado.resumo %}
+        <div class="grade-pilulas">
+          {% for i in range(resultado.resumo.total) %}
+            {% if i < resultado.resumo.tomados %}
+              <div class="pilula tomado" title="Tomado"></div>
+            {% elif i < resultado.resumo.tomados + resultado.resumo.possivel_consumo %}
+              <div class="pilula possivel" title="Possível"></div>
+            {% else %}
+              <div class="pilula intacto" title="Intacto"></div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <p class="subtitulo" style="margin:0;">Continue o tratamento conforme orientado pelo profissional de saúde.</p>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="resultado-card erro">
+        <span class="selo falha">Não foi possível processar</span>
+        <h1 style="font-size:1.3rem;">{{ resultado.mensagem }}</h1>
+
+        {% if resultado.requer_escolha_modelo %}
+        <form action="{{ url_for('enviar_foto') }}" method="post" enctype="multipart/form-data" style="text-align:left; margin-top:20px;">
+          <input type="hidden" name="identificacao" value="{{ resultado.paciente.id }}">
+          <label class="primeiro" for="modelo">Qual cartela você está enviando?</label>
+          <select id="modelo" name="modelo" class="select-bonito" required>
+            <option value="">Selecione</option>
+            <option value="rh_300_150">Rifampicina + Isoniazida 300/150mg</option>
+            <option value="rh_150_75">Rifampicina + Isoniazida 150/75mg</option>
+          </select>
+          <label for="foto">Foto da cartela</label>
+          <label class="campo-foto" for="foto">
+            <div class="rotulo-foto">Toque para escolher a foto</div>
+            <input type="file" id="foto" name="foto" accept="image/*" capture="environment" required>
+          </label>
+          <button type="submit">Enviar</button>
+        </form>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <a href="{{ url_for('pagina_envio') }}" class="botao secundario" style="margin-top:16px;">Enviar outra foto</a>
+  </div>  <script src="{{ url_for('static', filename='select_custom.js') }}"></script>
+</body>
+</html>

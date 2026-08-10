@@ -1,7 +1,7 @@
 {
     "metrica": "matiz_verde_amarelo",
     "direcao": "baixa_e_tomado",
-    "limiar_tomado": 3.0,
+    "limiar_tomado": 8.0,
     "limiar_possivel": 15.0,
     "parametros_metrica": {
         "matiz_min": 25,

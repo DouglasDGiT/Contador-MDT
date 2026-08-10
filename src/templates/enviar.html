@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Enviar foto da cartela</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="topo">
+    <div class="pilula-icone"></div>
+    <span>Contador MDT</span>
+  </div>
+
+  <div class="container">
+    <h1>Enviar foto da cartela</h1>
+    <p class="subtitulo">Tire uma foto da cartela do medicamento para registrar o tratamento.</p>
+
+    <form action="{{ url_for('enviar_foto') }}" method="post" enctype="multipart/form-data">
+      <label class="primeiro" for="identificacao">Número do SINAN ou nome completo</label>
+      <input type="text" id="identificacao" name="identificacao"
+             placeholder="Digite o SINAN ou seu nome completo" required>
+
+      <label for="foto">Foto da cartela</label>
+      <label class="campo-foto" for="foto">
+        <div class="rotulo-foto">Toque para tirar ou escolher a foto</div>
+        <div class="ajuda-foto">A cartela inteira precisa aparecer na foto</div>
+        <input type="file" id="foto" name="foto" accept="image/*" capture="environment" required>
+        <img class="preview-foto" id="preview">
+      </label>
+
+      <button type="submit">Enviar</button>
+    </form>
+
+    <div class="rodape-link">
+      <a href="{{ url_for('login_agente') }}">Sou agente de saúde</a>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('foto');
+    const preview = document.getElementById('preview');
+    input.addEventListener('change', () => {
+      if (input.files && input.files[0]) {
+        preview.src = URL.createObjectURL(input.files[0]);
+        preview.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ paciente.nome }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    @media print {
+      .nao-imprimir { display: none !important; }
+      body { background: white; }
+      table { box-shadow: none; }
+      .container { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topo nao-imprimir">
+    <div class="pilula-icone"></div>
+    <span>Contador MDT</span>
+  </div>
+
+  <div class="container largo">
+    <div class="barra-header nao-imprimir">
+      <a href="{{ url_for('painel') }}" style="font-size:0.88rem;">&larr; Voltar ao painel</a>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <select id="filtro-periodo" class="select-bonito" style="width:auto; min-width:160px;">
+          <option value="todas">Todas as datas</option>
+          {% for mes in meses_disponiveis %}
+          <option value="{{ mes }}">{{ mes }}</option>
+          {% endfor %}
+        </select>
+        <button onclick="imprimirComFiltro()" class="botao secundario" style="width:auto; margin-top:0;">
+          Imprimir relatório
+        </button>
+      </div>
+    </div>
+
+    <h2 id="titulo-periodo-impressao" style="display:none; font-family:'Fraunces',serif; color:var(--verde-escuro);"></h2>
+
+    <h1 style="margin-top:14px;">{{ paciente.nome }}</h1>
+    <p class="subtitulo">
+      SINAN {{ paciente.id }} &middot; {{ paciente.peso }}kg &middot;
+      Início: {{ paciente.data_inicio_tratamento }} &middot;
+      Fase: {{ relatorio.fase_atual.replace('_', ' ')|capitalize }}
+    </p>
+
+    <table style="margin-bottom:28px;">
+      <thead>
+        <tr>
+          <th>Medicamento</th>
+          <th>Esperado</th>
+          <th>Realizado</th>
+          <th>Aderência</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for modelo, dados in relatorio.por_modelo.items() %}
+        <tr>
+          <td>{{ modelo }}</td>
+          <td>{{ dados.esperado }}</td>
+          <td>{{ dados.realizado }}</td>
+          <td>
+            {% if dados.percentual_aderencia is none %}
+              <span class="aderencia-pill na">N/A</span>
+            {% elif dados.percentual_aderencia >= 80 %}
+              <span class="aderencia-pill alta">{{ dados.percentual_aderencia }}%</span>
+            {% elif dados.percentual_aderencia >= 50 %}
+              <span class="aderencia-pill media">{{ dados.percentual_aderencia }}%</span>
+            {% else %}
+              <span class="aderencia-pill baixa">{{ dados.percentual_aderencia }}%</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h1 style="font-size:1.2rem;">Histórico de leituras</h1>
+    {% if historico %}
+    <table id="tabela-historico">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>Cartela</th>
+          <th>Tomados</th>
+          <th>Possível</th>
+          <th>Intactos</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entrada in historico|reverse %}
+          {% for leitura in entrada.leituras %}
+          <tr data-mes="{{ entrada.data[:7] }}">
+            <td>{{ entrada.data }}</td>
+            <td>{{ leitura.modelo }}</td>
+            <td>{{ leitura.tomados }}</td>
+            <td>{{ leitura.possivel_consumo }}</td>
+            <td>{{ leitura.intactos }}</td>
+          </tr>
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+    <p id="sem-leituras-periodo" class="subtitulo" style="display:none;">
+      Nenhuma leitura registrada neste período.
+    </p>
+    {% else %}
+      <p class="subtitulo">Nenhuma leitura registrada ainda.</p>
+    {% endif %}
+  </div>
+
+  <script src="{{ url_for('static', filename='select_custom.js') }}"></script>
+  <script>
+    function imprimirComFiltro() {
+      const select = document.getElementById('filtro-periodo');
+      const periodo = select.value;
+      const linhas = document.querySelectorAll('#tabela-historico tbody tr');
+      const titulo = document.getElementById('titulo-periodo-impressao');
+      let visiveis = 0;
+
+      linhas.forEach(linha => {
+        const bate = (periodo === 'todas') || (linha.getAttribute('data-mes') === periodo);
+        linha.style.display = bate ? '' : 'none';
+        if (bate) visiveis++;
+      });
+
+      const semLeituras = document.getElementById('sem-leituras-periodo');
+      if (semLeituras) {
+        semLeituras.style.display = (visiveis === 0) ? 'block' : 'none';
+      }
+
+      if (titulo) {
+        titulo.textContent = periodo === 'todas'
+          ? 'Relatório completo -- todas as datas'
+          : `Relatório do mês: ${periodo}`;
+        titulo.style.display = 'block';
+      }
+
+      window.print();
+    }
+  </script>
+</body>
+</html>

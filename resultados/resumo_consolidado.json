@@ -2,14 +2,15 @@
     {
         "modelo": "rhze",
         "total": 6,
-        "tomados": 1,
+        "tomados": 2,
         "posicoes_tomadas": [
-            "P3"
+            "P3",
+            "P2"
         ],
         "possivel_consumo": 1,
         "posicoes_possivel": [
             "P6"
         ],
-        "intactos": 4
+        "intactos": 3
     }
 ]

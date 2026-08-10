@@ -1,0 +1,28 @@
+# Dados de pacientes -- nunca deve ir para o repositório
+pacientes/
+
+# Imagens processadas em runtime (uploads, alinhamentos, recortes, debug)
+imagens/uploads/
+alinhadas/
+recortes/
+debug/
+temp_uploads/
+
+# Resultados gerados
+resultados/
+
+# Ambiente virtual Python
+venv/
+env/
+*.egg-info/
+
+# Cache Python
+__pycache__/
+*.pyc
+
+# Variáveis de ambiente locais (se você criar um .env no futuro)
+.env
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db

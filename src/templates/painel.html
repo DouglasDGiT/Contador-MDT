@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel de pacientes</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="topo">
+    <div class="pilula-icone"></div>
+    <span>Contador MDT</span>
+  </div>
+
+  <div class="container largo">
+    <div class="barra-header">
+      <div>
+        <h1 style="margin-bottom:2px;">Pacientes em acompanhamento</h1>
+        <p class="subtitulo" style="margin-bottom:0;">{{ pacientes|length }} paciente(s) cadastrado(s)</p>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <a href="{{ url_for('cadastro') }}" class="botao secundario" style="width:auto; margin-top:0;">Novo paciente</a>
+        <a href="{{ url_for('logout_agente') }}" class="botao secundario" style="width:auto; margin-top:0;">Sair</a>
+      </div>
+    </div>
+
+    {% if pacientes %}
+    <input type="text" id="busca-paciente" placeholder="Buscar por SINAN ou nome..."
+           style="margin-bottom:16px;">
+    <table id="tabela-pacientes">
+      <thead>
+        <tr>
+          <th>SINAN</th>
+          <th>Nome</th>
+          <th>Peso</th>
+          <th>Fase</th>
+          <th>Aderência</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in pacientes %}
+        <tr class="linha-paciente" data-busca="{{ p.id }}|{{ p.nome|lower }}"
+            data-href="{{ url_for('detalhe_paciente', sinan=p.id) }}">
+          <td>{{ p.id }}</td>
+          <td>{{ p.nome }}</td>
+          <td>{{ p.peso }}kg</td>
+          <td>{{ p.fase.replace('_', ' ')|capitalize }}</td>
+          <td>
+            {% if p.aderencia is none %}
+              <span class="aderencia-pill na">Sem dados</span>
+            {% elif p.aderencia >= 80 %}
+              <span class="aderencia-pill alta">{{ p.aderencia }}%</span>
+            {% elif p.aderencia >= 50 %}
+              <span class="aderencia-pill media">{{ p.aderencia }}%</span>
+            {% else %}
+              <span class="aderencia-pill baixa">{{ p.aderencia }}%</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p id="sem-resultado" class="subtitulo" style="display:none;">Nenhum paciente encontrado.</p>
+    {% else %}
+      <p class="subtitulo">Nenhum paciente cadastrado ainda.</p>
+    {% endif %}
+  </div>
+
+  <script>
+    const busca = document.getElementById('busca-paciente');
+    if (busca) {
+      busca.addEventListener('input', () => {
+        const termo = busca.value.trim().toLowerCase();
+        const linhas = document.querySelectorAll('#tabela-pacientes tbody tr');
+        let visiveis = 0;
+        linhas.forEach(linha => {
+          const alvo = linha.getAttribute('data-busca');
+          const bate = alvo.includes(termo);
+          linha.style.display = bate ? '' : 'none';
+          if (bate) visiveis++;
+        });
+        document.getElementById('sem-resultado').style.display = visiveis === 0 ? 'block' : 'none';
+      });
+    }
+
+    document.querySelectorAll('.linha-paciente[data-href]').forEach(linha => {
+      linha.addEventListener('click', () => {
+        window.location = linha.getAttribute('data-href');
+      });
+    });
+  </script>
+</body>
+</html>
