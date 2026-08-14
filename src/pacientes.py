@@ -1,29 +1,16 @@
 ﻿import json
-import os
 import re
 import unicodedata
-from datetime import date
 
-PASTA_PACIENTES = "pacientes"
-ARQUIVO_INDICE = os.path.join(PASTA_PACIENTES, "pacientes.json")
+from db import get_connection, init_db
 
-
-def _carregar_indice():
-    if not os.path.exists(ARQUIVO_INDICE):
-        return []
-    with open(ARQUIVO_INDICE, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _salvar_indice(pacientes):
-    os.makedirs(PASTA_PACIENTES, exist_ok=True)
-    with open(ARQUIVO_INDICE, "w", encoding="utf-8") as f:
-        json.dump(pacientes, f, indent=4, ensure_ascii=False)
+# Garante que as tabelas existem assim que este módulo é importado
+init_db()
 
 
 def normalizar_id(paciente_id):
     """
-    Remove pontuação do ID (útil para CPF: "123.456.789-00" -> "12345678900"),
+    Remove pontuação do ID (útil para CPF/SINAN: "123.456-00" -> "12345600"),
     garantindo que o mesmo paciente não seja cadastrado duas vezes só por
     causa de formatação diferente na hora de digitar.
     """
@@ -40,29 +27,23 @@ def normalizar_nome(nome):
     return re.sub(r"\s+", " ", sem_acento.strip().lower())
 
 
-def buscar_pacientes_por_nome(nome_busca):
-    """
-    Busca pacientes cujo nome cadastrado bata (exatamente, após normalizar)
-    com o texto informado. Como nome NÃO é garantidamente único (diferente
-    do ID/SINAN), retorna uma LISTA -- pode vir vazia, com 1, ou com vários
-    resultados (nesse caso, quem chamou precisa desambiguar com o usuário).
-    """
-    alvo = normalizar_nome(nome_busca)
-    pacientes = _carregar_indice()
-    return [p for p in pacientes if normalizar_nome(p["nome"]) == alvo]
+def _row_para_dict(row):
+    d = dict(row)
+    d["esquema_manutencao"] = json.loads(d["esquema_manutencao"]) if d.get("esquema_manutencao") else None
+    return d
 
 
 def cadastrar_paciente(paciente_id, nome, peso, data_inicio_tratamento, esquema_manutencao=None):
     """
     Cadastra um novo paciente com ID único informado externamente
-    (no sistema real, o CPF). Lança exceção se o ID já existir.
+    (no sistema real, o número do SINAN). Lança exceção se o ID já existir.
 
     data_inicio_tratamento: string no formato "YYYY-MM-DD"
     esquema_manutencao: dict opcional com o esquema de manutenção JÁ
         PRESCRITO PELO MÉDICO (ex: {"rh_300_150": 1}), usado quando o
         paciente chegar na fase de manutenção. Pode ser definido depois,
         via definir_esquema_manutencao(), se ainda não for conhecido no
-        momento do cadastro (comum, já que a fase intensiva vem primeiro).
+        momento do cadastro.
     """
     paciente_id = normalizar_id(paciente_id)
 
@@ -72,23 +53,67 @@ def cadastrar_paciente(paciente_id, nome, peso, data_inicio_tratamento, esquema_
             f"Use buscar_paciente() para consultar, ou atualizar_peso() para editar."
         )
 
-    pacientes = _carregar_indice()
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO pacientes (id, nome, peso, data_inicio_tratamento, esquema_manutencao) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (
+            paciente_id, nome, peso, data_inicio_tratamento,
+            json.dumps(esquema_manutencao, ensure_ascii=False) if esquema_manutencao else None,
+        ),
+    )
+    conn.commit()
+    conn.close()
 
-    paciente = {
-        "id": paciente_id,
-        "nome": nome,
-        "peso": peso,
-        "data_inicio_tratamento": data_inicio_tratamento,
-        "esquema_manutencao": esquema_manutencao,
-    }
+    print(f"Paciente cadastrado: {nome} (id: {paciente_id})")
+    return buscar_paciente(paciente_id)
 
-    pacientes.append(paciente)
-    _salvar_indice(pacientes)
 
-    pasta_paciente = os.path.join(PASTA_PACIENTES, paciente["id"])
-    os.makedirs(pasta_paciente, exist_ok=True)
+def buscar_paciente(paciente_id):
+    paciente_id = normalizar_id(paciente_id)
+    conn = get_connection()
+    row = conn.execute("SELECT * FROM pacientes WHERE id = ?", (paciente_id,)).fetchone()
+    conn.close()
+    return _row_para_dict(row) if row else None
 
-    print(f"Paciente cadastrado: {paciente['nome']} (id: {paciente['id']})")
+
+def buscar_pacientes_por_nome(nome_busca):
+    """
+    Busca pacientes cujo nome cadastrado bata (exatamente, após normalizar)
+    com o texto informado. Como nome NÃO é garantidamente único (diferente
+    do ID/SINAN), retorna uma LISTA -- pode vir vazia, com 1, ou com vários
+    resultados (nesse caso, quem chamou precisa desambiguar com o usuário).
+    """
+    alvo = normalizar_nome(nome_busca)
+    conn = get_connection()
+    rows = conn.execute("SELECT * FROM pacientes").fetchall()
+    conn.close()
+    return [_row_para_dict(r) for r in rows if normalizar_nome(r["nome"]) == alvo]
+
+
+def listar_pacientes():
+    conn = get_connection()
+    rows = conn.execute("SELECT * FROM pacientes ORDER BY nome").fetchall()
+    conn.close()
+    return [_row_para_dict(r) for r in rows]
+
+
+def atualizar_peso(paciente_id, novo_peso):
+    """
+    Atualiza o peso do paciente (relevante se a faixa de peso mudar
+    durante o tratamento, o que altera a dose esperada).
+    """
+    paciente_id = normalizar_id(paciente_id)
+    conn = get_connection()
+    cursor = conn.execute("UPDATE pacientes SET peso = ? WHERE id = ?", (novo_peso, paciente_id))
+    conn.commit()
+    conn.close()
+
+    if cursor.rowcount == 0:
+        raise Exception(f"Paciente não encontrado: {paciente_id}")
+
+    paciente = buscar_paciente(paciente_id)
+    print(f"Peso atualizado: {paciente['nome']} -> {novo_peso}kg")
     return paciente
 
 
@@ -99,48 +124,25 @@ def definir_esquema_manutencao(paciente_id, esquema_manutencao):
     calcular aderência na fase de manutenção.
     """
     paciente_id = normalizar_id(paciente_id)
-    pacientes = _carregar_indice()
-    for p in pacientes:
-        if p["id"] == paciente_id:
-            p["esquema_manutencao"] = esquema_manutencao
-            _salvar_indice(pacientes)
-            print(f"Esquema de manutenção definido para {p['nome']}: {esquema_manutencao}")
-            return p
-    raise Exception(f"Paciente não encontrado: {paciente_id}")
+    conn = get_connection()
+    cursor = conn.execute(
+        "UPDATE pacientes SET esquema_manutencao = ? WHERE id = ?",
+        (json.dumps(esquema_manutencao, ensure_ascii=False), paciente_id),
+    )
+    conn.commit()
+    conn.close()
 
+    if cursor.rowcount == 0:
+        raise Exception(f"Paciente não encontrado: {paciente_id}")
 
-def buscar_paciente(paciente_id):
-    paciente_id = normalizar_id(paciente_id)
-    pacientes = _carregar_indice()
-    for p in pacientes:
-        if p["id"] == paciente_id:
-            return p
-    return None
-
-
-def listar_pacientes():
-    return _carregar_indice()
-
-
-def atualizar_peso(paciente_id, novo_peso):
-    """
-    Atualiza o peso do paciente (relevante se a faixa de peso mudar
-    durante o tratamento, o que altera a dose esperada).
-    """
-    paciente_id = normalizar_id(paciente_id)
-    pacientes = _carregar_indice()
-    for p in pacientes:
-        if p["id"] == paciente_id:
-            p["peso"] = novo_peso
-            _salvar_indice(pacientes)
-            print(f"Peso atualizado: {p['nome']} -> {novo_peso}kg")
-            return p
-    raise Exception(f"Paciente não encontrado: {paciente_id}")
+    paciente = buscar_paciente(paciente_id)
+    print(f"Esquema de manutenção definido para {paciente['nome']}: {esquema_manutencao}")
+    return paciente
 
 
 if __name__ == "__main__":
-    # Exemplo de uso manual
+    from datetime import date
     p = cadastrar_paciente("123.456.789-00", "Paciente Teste", 65, str(date.today()))
-    print(buscar_paciente("12345678900"))       # busca funciona mesmo sem pontuação
-    print(buscar_paciente("123.456.789-00"))    # e também com pontuação
+    print(buscar_paciente("12345678900"))
+    print(buscar_paciente("123.456.789-00"))
     print(listar_pacientes())

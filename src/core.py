@@ -13,7 +13,7 @@ from alinhar_cartela import alinhar_cartela
 from recortar_blisters import recortar_blisters
 from comparar_blisters import comparar_blisters
 from pacientes import buscar_paciente, buscar_pacientes_por_nome
-from adesao import registrar_leitura, calcular_adesao, calcular_fase_atual
+from adesao import registrar_leitura, calcular_adesao, calcular_fase_atual, hoje_brasil
 
 
 def identificar_paciente_por_texto(texto):
@@ -128,7 +128,7 @@ def processar_envio_foto(paciente_id, caminho_foto_temporario, modelo_forcado=No
         }
 
     resumo = montar_resumo(modelo, resultados)
-    registrar_leitura(paciente["id"], str(date.today()), [resumo])
+    registrar_leitura(paciente["id"], str(hoje_brasil()), [resumo])
 
     return {
         "sucesso": True,

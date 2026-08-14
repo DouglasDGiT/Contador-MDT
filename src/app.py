@@ -16,7 +16,7 @@ from flask import Flask, request, render_template, redirect, url_for, session
 
 from core import processar_envio_foto, identificar_paciente_por_texto
 from pacientes import buscar_paciente, cadastrar_paciente, listar_pacientes, definir_esquema_manutencao
-from adesao import calcular_adesao, carregar_historico
+from adesao import calcular_adesao, carregar_historico, hoje_brasil
 from dosagem import listar_opcoes_manutencao
 
 app = Flask(__name__)
@@ -196,7 +196,7 @@ def cadastro():
         sinan = request.form.get("sinan", "").strip()
         nome = request.form.get("nome", "").strip()
         peso = request.form.get("peso", "").strip()
-        data_inicio = request.form.get("data_inicio", "").strip() or str(date.today())
+        data_inicio = request.form.get("data_inicio", "").strip() or str(hoje_brasil())
         esquema_indice = request.form.get("esquema_indice")
 
         try:

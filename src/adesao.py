@@ -1,9 +1,24 @@
 import json
-import os
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from dosagem import carregar_tabela_dosagem, encontrar_faixa_peso
-from pacientes import buscar_paciente, PASTA_PACIENTES
+from pacientes import buscar_paciente
+from db import get_connection
+
+FUSO_BRASIL = ZoneInfo("America/Sao_Paulo")
+
+
+def hoje_brasil():
+    """
+    Retorna a data de HOJE no fuso horário do Brasil (America/Sao_Paulo),
+    independente do fuso horário em que o servidor está configurado.
+    Servidores de hospedagem (ex: PythonAnywhere) costumam rodar em UTC,
+    então usar date.today() diretamente pode contar um dia a mais/a menos
+    dependendo da hora do dia -- por isso todo "hoje" do sistema passa
+    por aqui, nunca por date.today() direto.
+    """
+    return datetime.now(FUSO_BRASIL).date()
 
 
 def _parse_data(s):
@@ -36,7 +51,7 @@ def calcular_fase_atual(data_inicio, data_referencia=None, tabela=None):
     if tabela is None:
         tabela = carregar_tabela_dosagem()
     if data_referencia is None:
-        data_referencia = date.today()
+        data_referencia = hoje_brasil()
 
     dias_passados = _dias_de_tratamento(data_inicio, data_referencia)
 
@@ -67,7 +82,7 @@ def calcular_dose_esperada_acumulada(peso, data_inicio, data_referencia=None,
     if tabela is None:
         tabela = carregar_tabela_dosagem()
     if data_referencia is None:
-        data_referencia = date.today()
+        data_referencia = hoje_brasil()
 
     dias_passados = _dias_de_tratamento(data_inicio, data_referencia)
 
@@ -118,60 +133,63 @@ def calcular_dose_esperada_acumulada(peso, data_inicio, data_referencia=None,
 
 def registrar_leitura(paciente_id, data_leitura, resumo_consolidado):
     """
-    Registra uma leitura (resultado de uma rodada do pipeline, já com
-    resumo_consolidado.json gerado) no histórico do paciente.
+    Registra uma leitura (resultado de uma rodada do pipeline) no
+    histórico do paciente, salva no banco SQLite.
 
-    resumo_consolidado: a lista que já vem de main.py -- cada item tem
-    "modelo" e "tomados" (quantidade de posições marcadas como tomadas
+    resumo_consolidado: a lista que já vem de main.py/core.py -- cada item
+    tem "modelo" e "tomados" (quantidade de posições marcadas como tomadas
     naquela cartela específica).
     """
-    pasta_paciente = os.path.join(PASTA_PACIENTES, paciente_id)
-    os.makedirs(pasta_paciente, exist_ok=True)
-    arquivo_historico = os.path.join(pasta_paciente, "historico.json")
-
-    if os.path.exists(arquivo_historico):
-        with open(arquivo_historico, "r", encoding="utf-8") as f:
-            historico = json.load(f)
-    else:
-        historico = []
-
-    entrada = {
-        "data": data_leitura,
-        "leituras": resumo_consolidado,
-    }
-    historico.append(entrada)
-
-    with open(arquivo_historico, "w", encoding="utf-8") as f:
-        json.dump(historico, f, indent=4, ensure_ascii=False)
+    conn = get_connection()
+    conn.execute(
+        "INSERT INTO historico (paciente_id, data, leituras) VALUES (?, ?, ?)",
+        (paciente_id, data_leitura, json.dumps(resumo_consolidado, ensure_ascii=False)),
+    )
+    conn.commit()
+    conn.close()
 
     print(f"Leitura registrada para paciente {paciente_id} em {data_leitura}.")
-    return entrada
+    return {"data": data_leitura, "leituras": resumo_consolidado}
 
 
 def carregar_historico(paciente_id):
-    arquivo_historico = os.path.join(PASTA_PACIENTES, paciente_id, "historico.json")
-    if not os.path.exists(arquivo_historico):
-        return []
-    with open(arquivo_historico, "r", encoding="utf-8") as f:
-        return json.load(f)
+    """
+    Retorna o histórico completo do paciente, em ordem cronológica,
+    no MESMO formato de antes: [{"data": "...", "leituras": [...]}, ...]
+    """
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT data, leituras FROM historico WHERE paciente_id = ? ORDER BY id",
+        (paciente_id,),
+    ).fetchall()
+    conn.close()
+
+    return [{"data": r["data"], "leituras": json.loads(r["leituras"])} for r in rows]
 
 
-def somar_tomados_historico(paciente_id, data_limite=None):
+def somar_tomados_historico(paciente_id, data_limite=None, tolerancia_ruido=1):
     """
     Soma o total de comprimidos "tomados" (por modelo) considerando que a
     MESMA cartela pode ser fotografada várias vezes ao longo do consumo
     (o paciente registra o progresso, não troca de cartela a cada foto).
 
     Lógica: para cada modelo, as leituras são ordenadas por data. Enquanto
-    o valor de "tomados" só aumenta (ou se mantém) entre leituras
-    consecutivas, consideramos que é a MESMA cartela evoluindo -- nesse
-    caso usamos sempre o valor mais recente, não somamos.
+    o valor de "tomados" só aumenta, se mantém, ou cai um pouco dentro da
+    margem de ruído (tolerancia_ruido), consideramos que é a MESMA cartela
+    -- nesse caso usamos o maior valor já visto para essa cartela, não
+    somamos. Isso absorve pequenas oscilações de medição entre fotos (ex:
+    uma cavidade na fronteira do limiar de classificação, que pode virar
+    de TOMADO para POSSÍVEL/INTACTO de uma foto para outra por causa de
+    luz/ângulo, mesmo sendo a mesma cartela física).
 
-    Se o valor de "tomados" CAI em relação à leitura anterior, isso indica
+    Se o valor de "tomados" CAI além da margem de tolerância, isso indica
     que a cartela foi trocada por uma nova (a anterior foi finalizada/
-    descartada). Nesse momento, o total da cartela anterior (seu último
-    valor visto) é somado ao acumulado, e o rastreamento reinicia com a
-    nova cartela.
+    descartada). Nesse momento, o maior valor visto da cartela anterior é
+    somado ao acumulado, e o rastreamento reinicia com a nova cartela.
+
+    tolerancia_ruido: quedas de até esse valor (padrão 1) são ignoradas,
+    tratadas como ruído, não como troca de cartela. Aumente se as leituras
+    estiverem oscilando mais que isso na prática.
 
     Isso é uma heurística: assume que o usuário não pula fotos a ponto de
     duas cartelas diferentes do mesmo modelo parecerem uma sequência
@@ -195,8 +213,8 @@ def somar_tomados_historico(paciente_id, data_limite=None):
         key=lambda e: _parse_data(e["data"]) if isinstance(e["data"], str) else e["data"]
     )
 
-    total_acumulado = {}      # total já "fechado" de cartelas anteriores
-    ultimo_valor_visto = {}   # valor mais recente da cartela atual em uso
+    total_acumulado = {}   # total já "fechado" de cartelas anteriores
+    maior_valor_visto = {}  # maior valor já visto na cartela atual em uso
 
     for entrada in historico_ordenado:
         for leitura in entrada["leituras"]:
@@ -205,22 +223,23 @@ def somar_tomados_historico(paciente_id, data_limite=None):
             modelo = leitura["modelo"]
             tomados = leitura["tomados"]
 
-            if modelo not in ultimo_valor_visto:
-                ultimo_valor_visto[modelo] = tomados
+            if modelo not in maior_valor_visto:
+                maior_valor_visto[modelo] = tomados
                 continue
 
-            if tomados < ultimo_valor_visto[modelo]:
-                # Queda no valor -- indica troca de cartela.
+            if tomados < maior_valor_visto[modelo] - tolerancia_ruido:
+                # Queda além da tolerância -- indica troca de cartela.
                 # Fecha a contagem da cartela anterior e reinicia.
-                total_acumulado[modelo] = total_acumulado.get(modelo, 0) + ultimo_valor_visto[modelo]
-                ultimo_valor_visto[modelo] = tomados
+                total_acumulado[modelo] = total_acumulado.get(modelo, 0) + maior_valor_visto[modelo]
+                maior_valor_visto[modelo] = tomados
             else:
-                # Mesma cartela, valor igual ou maior -- atualiza para o mais recente
-                ultimo_valor_visto[modelo] = tomados
+                # Mesma cartela (ou oscilação dentro da tolerância) --
+                # mantém sempre o MAIOR valor já visto para essa cartela
+                maior_valor_visto[modelo] = max(maior_valor_visto[modelo], tomados)
 
     # Soma a cartela ainda em uso (a mais recente de cada modelo) ao total
     total_final = dict(total_acumulado)
-    for modelo, valor in ultimo_valor_visto.items():
+    for modelo, valor in maior_valor_visto.items():
         total_final[modelo] = total_final.get(modelo, 0) + valor
 
     return total_final
@@ -243,7 +262,7 @@ def calcular_adesao(paciente_id, data_referencia=None, tabela=None):
         raise Exception(f"Paciente não encontrado: {paciente_id}")
 
     if data_referencia is None:
-        data_referencia = str(date.today())
+        data_referencia = str(hoje_brasil())
 
     esperado = calcular_dose_esperada_acumulada(
         paciente["peso"], paciente["data_inicio_tratamento"], data_referencia,
