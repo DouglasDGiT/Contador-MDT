@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ paciente.nome }}</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16.png') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
     @media print {
@@ -110,7 +114,7 @@
     {% endif %}
   </div>
 
-  <script src="{{ url_for('static', filename='select_custom.js') }}"></script>
+  <script src="{{ url_for('static', filename='select-bonito.js') }}"></script>
   <script>
     function imprimirComFiltro() {
       const select = document.getElementById('filtro-periodo');
