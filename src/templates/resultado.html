@@ -54,7 +54,7 @@
           <label for="foto">Foto da cartela</label>
           <label class="campo-foto" for="foto">
             <div class="rotulo-foto">Toque para escolher a foto</div>
-            <input type="file" id="foto" name="foto" accept="image/*" capture="environment" required>
+            <input type="file" id="foto" name="foto" accept="image/*" required>
           </label>
           <button type="submit">Enviar</button>
         </form>
@@ -63,6 +63,8 @@
     {% endif %}
 
     <a href="{{ url_for('pagina_envio') }}" class="botao secundario" style="margin-top:16px;">Enviar outra foto</a>
-  </div>  <script src="{{ url_for('static', filename='select-bonito.js') }}"></script>
+  </div>
+
+  <script src="{{ url_for('static', filename='select_custom.js') }}"></script>
 </body>
 </html>

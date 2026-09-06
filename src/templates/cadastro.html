@@ -17,7 +17,7 @@
   </div>
 
   <div class="container">
-    <a href="{{ url_for('painel') }}" style="font-size:0.88rem;">&larr; Voltar ao painel</a>
+    <a href="{{ url_for('painel') }}" class="link-voltar">&larr; Voltar ao painel</a>
 
     <h1 style="margin-top:14px;">Cadastrar paciente</h1>
     <p class="subtitulo">Preencha no dia em que o paciente recebe a receita.</p>
@@ -48,7 +48,7 @@
     </form>
   </div>
 
-  <script src="{{ url_for('static', filename='select-bonito.js') }}"></script>
+  <script src="{{ url_for('static', filename='select_custom.js') }}"></script>
   <script>
     const pesoInput = document.getElementById('peso');
     const select = document.getElementById('esquema_indice');
