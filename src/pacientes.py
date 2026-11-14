@@ -33,18 +33,39 @@ def _row_para_dict(row):
     return d
 
 
-def cadastrar_paciente(paciente_id, nome, peso, data_inicio_tratamento, esquema_manutencao=None):
+FASES_INICIAIS_VALIDAS = ("fase_intensiva", "fase_manutencao")
+
+
+def cadastrar_paciente(paciente_id, nome, peso, data_inicio_tratamento,
+                       esquema_manutencao=None, fase_inicial="fase_intensiva", data_inicio_definitivo=None):
     """
     Cadastra um novo paciente com ID único informado externamente
     (no sistema real, o número do SINAN). Lança exceção se o ID já existir.
 
-    data_inicio_tratamento: string no formato "YYYY-MM-DD"
+    data_inicio_tratamento: string no formato "YYYY-MM-DD". É a data em que
+        a fase INICIAL do monitoramento começou: o início do tratamento
+        (fase_intensiva) ou o início da manutenção (fase_manutencao).
     esquema_manutencao: dict opcional com o esquema de manutenção JÁ
         PRESCRITO PELO MÉDICO (ex: {"rh_300_150": 1}), usado quando o
         paciente chegar na fase de manutenção. Pode ser definido depois,
         via definir_esquema_manutencao(), se ainda não for conhecido no
-        momento do cadastro.
+        momento do cadastro -- EXCETO quando fase_inicial é
+        "fase_manutencao", caso em que é obrigatório.
+    fase_inicial: "fase_intensiva" (padrão, paciente novo no tratamento) ou
+        "fase_manutencao" (paciente que já entra no monitoramento na
+        segunda fase, sem passar pela intensiva).
     """
+    if fase_inicial not in FASES_INICIAIS_VALIDAS:
+        raise ValueError(
+            f"fase_inicial inválida: {fase_inicial!r}. Use {FASES_INICIAIS_VALIDAS}."
+        )
+    if fase_inicial == "fase_manutencao" and not esquema_manutencao:
+        raise ValueError(
+            "Para iniciar na fase de manutenção é obrigatório informar o "
+            "esquema de manutenção prescrito (sem ele não há como calcular "
+            "a dose esperada)."
+        )
+
     paciente_id = normalizar_id(paciente_id)
 
     if buscar_paciente(paciente_id) is not None:
@@ -55,11 +76,12 @@ def cadastrar_paciente(paciente_id, nome, peso, data_inicio_tratamento, esquema_
 
     conn = get_connection()
     conn.execute(
-        "INSERT INTO pacientes (id, nome, peso, data_inicio_tratamento, esquema_manutencao) "
-        "VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO pacientes (id, nome, peso, data_inicio_tratamento, esquema_manutencao, fase_inicial, data_inicio_definitivo)"
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             paciente_id, nome, peso, data_inicio_tratamento,
             json.dumps(esquema_manutencao, ensure_ascii=False) if esquema_manutencao else None,
+            fase_inicial, data_inicio_definitivo,
         ),
     )
     conn.commit()

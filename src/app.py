@@ -16,7 +16,7 @@ from flask import Flask, request, render_template, redirect, url_for, session
 
 from core import processar_envio_foto, identificar_paciente_por_texto
 from pacientes import buscar_paciente, cadastrar_paciente, listar_pacientes, definir_esquema_manutencao
-from adesao import calcular_adesao, carregar_historico, hoje_brasil
+from adesao import calcular_adesao, carregar_historico, calcular_fase_atual, hoje_brasil
 from dosagem import listar_opcoes_manutencao
 
 app = Flask(__name__)
@@ -24,6 +24,23 @@ app.secret_key = os.environ.get("SECRET_KEY", "chave-de-desenvolvimento-trocar-e
 
 # Senha simples compartilhada entre agentes -- trocar por login individual depois
 SENHA_AGENTE = os.environ.get("SENHA_AGENTE", "trocar-esta-senha")
+
+# ====================================
+# QUEBRA DE CACHE DE ARQUIVOS ESTÁTICOS
+# ====================================
+# Sem isso, o navegador do agente/paciente pode continuar usando uma
+# versão antiga do CSS/JS guardada em cache, mesmo depois de um deploy
+# novo -- e como não dá para pedir para cada pessoa forçar recarregar
+# manualmente, a URL do arquivo estático ganha um "carimbo de versão"
+# (a hora em que o servidor iniciou). Isso muda a cada deploy/reload,
+# fazendo o navegador tratar como um arquivo novo e buscar de novo.
+import time
+_VERSAO_ESTATICOS = str(int(time.time()))
+
+
+@app.template_global()
+def static_v(filename):
+    return url_for("static", filename=filename) + f"?v={_VERSAO_ESTATICOS}"
 
 
 # ====================================
@@ -169,7 +186,36 @@ def detalhe_paciente(sinan):
     if paciente is None:
         return "Paciente não encontrado", 404
 
-    relatorio = calcular_adesao(sinan)
+    # Se a aderência não puder ser calculada (ex: o paciente já chegou na
+    # manutenção e o esquema prescrito ainda não foi cadastrado), a página
+    # abre mesmo assim, com um aviso -- em vez de quebrar com erro 500.
+    aviso = None
+    try:
+        relatorio = calcular_adesao(sinan)
+    except ValueError as erro:
+        # A própria fase atual também pode falhar (ex: data de início no
+        # futuro), então ela é calculada com proteção para não gerar um
+        # novo erro dentro do tratamento do erro.
+        try:
+            fase = calcular_fase_atual(
+                paciente["data_inicio_tratamento"],
+                fase_inicial=paciente.get("fase_inicial") or "fase_intensiva",
+            )
+        except ValueError:
+            fase = None
+
+        # Só diz que falta o esquema quando é isso mesmo que acontece:
+        # o paciente já passou da fase intensiva e não há esquema cadastrado.
+        # Nos demais casos (peso fora da tabela, data inválida...) mostra o
+        # motivo real.
+        if fase in ("fase_manutencao", "tratamento_concluido") and not paciente.get("esquema_manutencao"):
+            aviso = ("A aderência não pôde ser calculada: o paciente já passou da fase "
+                     "intensiva, mas o esquema de manutenção prescrito não foi "
+                     "cadastrado.")
+        else:
+            aviso = f"A aderência não pôde ser calculada: {erro}"
+
+        relatorio = {"fase_atual": fase or "desconhecida", "por_modelo": {}}
     historico = carregar_historico(sinan)
 
     # Extrai os meses (YYYY-MM) que realmente têm leitura registrada,
@@ -180,7 +226,7 @@ def detalhe_paciente(sinan):
 
     return render_template(
         "paciente.html", paciente=paciente, relatorio=relatorio,
-        historico=historico, meses_disponiveis=meses_disponiveis
+        historico=historico, meses_disponiveis=meses_disponiveis, aviso=aviso
     )
 
 
@@ -189,33 +235,84 @@ def cadastro():
     if not agente_autenticado():
         return redirect(url_for("login_agente"))
 
-    erro = None
-    opcoes_manutencao = None
+    if request.method == "GET":
+        return render_template("cadastro.html", erro=None, dados={}, hoje=str(hoje_brasil()))
 
-    if request.method == "POST":
-        sinan = request.form.get("sinan", "").strip()
-        nome = request.form.get("nome", "").strip()
-        peso = request.form.get("peso", "").strip()
-        data_inicio = request.form.get("data_inicio", "").strip() or str(hoje_brasil())
-        esquema_indice = request.form.get("esquema_indice")
+    # Devolve o formulário com o que a pessoa já digitou + a mensagem de
+    # erro, para ela não precisar redigitar tudo por causa de um campo.
+    def erro_no_formulario(mensagem):
+        return render_template(
+            "cadastro.html", erro=mensagem, dados=request.form, hoje=str(hoje_brasil())
+        )
 
+    sinan = request.form.get("sinan", "").strip()
+    nome = request.form.get("nome", "").strip()
+    peso = request.form.get("peso", "").strip()
+    data_inicio = request.form.get("data_inicio", "").strip() or str(hoje_brasil())
+    data_inicio_definitivo = (request.form.get("data_inicio_definitivo","").strip() or None)
+    esquema_indice = request.form.get("esquema_indice", "")
+    fase_inicial = request.form.get("fase_inicial", "fase_intensiva")
+
+    if fase_inicial not in ("fase_intensiva", "fase_manutencao"):
+        fase_inicial = "fase_intensiva"
+
+    # Quem entra na manutenção é acompanhado a partir do dia do cadastro
+    # (dia 1 do acompanhamento): nenhum dia anterior é contado. Por isso a
+    # data enviada pelo formulário é ignorada e vale a de hoje (fuso do
+    # Brasil) -- assim não depende de o agente escolher a data certa.
+    if fase_inicial == "fase_manutencao":
+        data_inicio = str(hoje_brasil())
+
+    # Validação da data definitiva (apenas informativa)
+    if data_inicio_definitivo:
         try:
-            peso_float = float(peso)
+            data_definitivo_date = date.fromisoformat(data_inicio_definitivo)
         except ValueError:
-            return render_template("cadastro.html", erro="Peso inválido.")
+            return erro_no_formulario(
+                "Data definitiva do tratamento inválida."
+            )
 
-        if buscar_paciente(sinan) is not None:
-            return render_template("cadastro.html", erro="SINAN já cadastrado.")
+        if data_definitivo_date > hoje_brasil():
+            return erro_no_formulario(
+                "A data definitiva não pode ser no futuro."
+            )
 
-        esquema = None
-        if esquema_indice not in (None, ""):
-            opcoes = listar_opcoes_manutencao(peso_float)
-            esquema = opcoes[int(esquema_indice)]
+    try:
+        peso_float = float(peso)
+    except ValueError:
+        return erro_no_formulario("Peso inválido.")
 
-        cadastrar_paciente(sinan, nome, peso_float, data_inicio, esquema_manutencao=esquema)
-        return redirect(url_for("painel"))
+    try:
+        data_inicio_date = date.fromisoformat(data_inicio)
+    except ValueError:
+        return erro_no_formulario("Data de início inválida.")
+    if data_inicio_date > hoje_brasil():
+        return erro_no_formulario("A data de início não pode ser no futuro.")
 
-    return render_template("cadastro.html", erro=erro)
+    if buscar_paciente(sinan) is not None:
+        return erro_no_formulario("SINAN já cadastrado.")
+
+    esquema = None
+    if esquema_indice != "":
+        try:
+            esquema = listar_opcoes_manutencao(peso_float)[int(esquema_indice)]
+        except (ValueError, IndexError):
+            return erro_no_formulario(
+                "Esquema de manutenção inválido para esse peso. "
+                "Confira o peso e escolha o esquema novamente."
+            )
+
+    if fase_inicial == "fase_manutencao" and esquema is None:
+        return erro_no_formulario(
+            "Para iniciar na fase de manutenção, selecione o esquema "
+            "prescrito pelo médico (ele é necessário para calcular a dose esperada)."
+        )
+
+    cadastrar_paciente(
+        sinan, nome, peso_float, data_inicio,
+        esquema_manutencao=esquema, fase_inicial=fase_inicial, data_inicio_definitivo=data_inicio_definitivo,
+    )
+    return redirect(url_for("painel"))
 
 
 @app.route("/agente/opcoes_manutencao")

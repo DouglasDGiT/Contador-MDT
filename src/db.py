@@ -31,7 +31,8 @@ def init_db():
             nome TEXT NOT NULL,
             peso REAL NOT NULL,
             data_inicio_tratamento TEXT NOT NULL,
-            esquema_manutencao TEXT
+            esquema_manutencao TEXT,
+            fase_inicial TEXT NOT NULL DEFAULT 'fase_intensiva'
         )
     """)
     conn.execute("""
@@ -47,5 +48,18 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_historico_paciente
         ON historico(paciente_id)
     """)
+    # Migração: fase em que o paciente COMEÇOU a ser monitorado. Pacientes
+    # já cadastrados antes desta coluna existir ficam como 'fase_intensiva',
+    # que era o único comportamento possível até então (nada muda para eles).
+    colunas = [row["name"] for row in conn.execute("PRAGMA table_info(pacientes)").fetchall()]
+    if "fase_inicial" not in colunas:
+        conn.execute(
+            "ALTER TABLE pacientes ADD COLUMN fase_inicial TEXT NOT NULL DEFAULT 'fase_intensiva'"
+        )
+    if "data_inicio_definitivo" not in colunas:
+        conn.execute(
+            "ALTER TABLE pacientes ADD COLUMN data_inicio_definitivo TEXT" 
+        )
+
     conn.commit()
     conn.close()

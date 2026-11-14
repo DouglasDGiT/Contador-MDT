@@ -22,10 +22,38 @@
         <h1 style="margin-bottom:2px;">Pacientes em acompanhamento</h1>
         <p class="subtitulo" style="margin-bottom:0;">{{ pacientes|length }} paciente(s) cadastrado(s)</p>
       </div>
-      <div style="display:flex; gap:10px;">
-        <a href="{{ url_for('cadastro') }}" class="botao secundario" style="width:auto; margin-top:0;">Novo paciente</a>
-        <a href="{{ url_for('logout_agente') }}" class="botao secundario" style="width:auto; margin-top:0;">Sair</a>
-      </div>
+        <div class="acoes-header" style="display:flex; gap:10px;">
+
+    <a href="{{ url_for('cadastro') }}"
+      class="botao secundario botao-com-icone"
+      style="width:auto; margin-top:0;">
+
+      <svg width="18" height="18" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+
+      Novo paciente
+    </a>
+
+    <a href="{{ url_for('logout_agente') }}"
+      class="botao secundario botao-com-icone"
+      style="width:auto; margin-top:0;">
+
+      <svg width="18" height="18" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor"
+          stroke-width="2" stroke-linecap="round"
+          stroke-linejoin="round">
+        <path d="M10 17l5-5-5-5"/>
+        <path d="M15 12H3"/>
+        <path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/>
+      </svg>
+
+      Sair
+    </a>
+
+  </div>
     </div>
 
     {% if pacientes %}
@@ -48,7 +76,9 @@
           <td>{{ p.id }}</td>
           <td>{{ p.nome }}</td>
           <td>{{ p.peso }}kg</td>
-          <td>{{ p.fase.replace('_', ' ')|capitalize }}</td>
+          <td>
+  {% if p.fase == "fase_manutencao" %}Fase de Manutenção{% elif p.fase == "fase_intensiva" %} Fase Intensiva {% else %}{{ p.fase.replace('_', ' ')|capitalize }}{% endif %}
+</td>
           <td>
             {% if p.aderencia is none %}
               <span class="aderencia-pill na">Sem dados</span>
@@ -64,6 +94,55 @@
         {% endfor %}
       </tbody>
     </table>
+
+      <div id="cards-pacientes" class="cards-pacientes">
+    {% for p in pacientes %}
+    <a class="card-paciente"
+      href="{{ url_for('detalhe_paciente', sinan=p.id) }}"
+      data-busca="{{ p.id }}|{{ p.nome|lower }}">
+
+      <div class="card-paciente-topo">
+        <div class="card-paciente-identificacao">
+          <strong class="card-paciente-nome">{{ p.nome }}</strong>
+          <span class="card-paciente-sinan">SINAN {{ p.id }}</span>
+        </div>
+
+        <div class="card-paciente-aderencia">
+          {% if p.aderencia is none %}
+            <span class="aderencia-pill na">Sem dados</span>
+          {% elif p.aderencia >= 80 %}
+            <span class="aderencia-pill alta">{{ p.aderencia }}%</span>
+          {% elif p.aderencia >= 50 %}
+            <span class="aderencia-pill media">{{ p.aderencia }}%</span>
+          {% else %}
+            <span class="aderencia-pill baixa">{{ p.aderencia }}%</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-paciente-detalhes">
+        <div>
+          <span class="card-paciente-label">Peso</span>
+          <strong>{{ p.peso }} kg</strong>
+        </div>
+
+        <div>
+          <span class="card-paciente-label">Fase atual</span>
+          <strong>
+            {% if p.fase == "fase_manutencao" %}
+              Fase de Manutenção
+            {% elif p.fase == "fase_intensiva" %}
+              Fase Intensiva
+            {% else %}
+              {{ p.fase.replace('_', ' ')|capitalize }}
+            {% endif %}
+          </strong>
+        </div>
+      </div>
+
+    </a>
+    {% endfor %}
+  </div>
     <p id="sem-resultado" class="subtitulo" style="display:none;">Nenhum paciente encontrado.</p>
     {% else %}
       <p class="subtitulo">Nenhum paciente cadastrado ainda.</p>
@@ -72,20 +151,45 @@
 
   <script>
     const busca = document.getElementById('busca-paciente');
-    if (busca) {
-      busca.addEventListener('input', () => {
-        const termo = busca.value.trim().toLowerCase();
-        const linhas = document.querySelectorAll('#tabela-pacientes tbody tr');
-        let visiveis = 0;
-        linhas.forEach(linha => {
-          const alvo = linha.getAttribute('data-busca');
-          const bate = alvo.includes(termo);
-          linha.style.display = bate ? '' : 'none';
-          if (bate) visiveis++;
-        });
-        document.getElementById('sem-resultado').style.display = visiveis === 0 ? 'block' : 'none';
+
+  if (busca) {
+    busca.addEventListener('input', () => {
+      const termo = busca.value.trim().toLowerCase();
+
+      const linhas = document.querySelectorAll(
+        '#tabela-pacientes tbody tr'
+      );
+
+      const cards = document.querySelectorAll(
+        '#cards-pacientes .card-paciente'
+      );
+
+      let visiveis = 0;
+
+      linhas.forEach(linha => {
+        const alvo = linha.getAttribute('data-busca') || '';
+        const bate = alvo.includes(termo);
+
+        linha.style.display = bate ? '' : 'none';
+
+        if (bate) visiveis++;
       });
-    }
+
+      cards.forEach(card => {
+        const alvo = card.getAttribute('data-busca') || '';
+        const bate = alvo.includes(termo);
+
+        card.style.display = bate ? '' : 'none';
+      });
+
+      const semResultado = document.getElementById('sem-resultado');
+
+      if (semResultado) {
+        semResultado.style.display =
+          visiveis === 0 ? 'block' : 'none';
+      }
+    });
+  }
 
     document.querySelectorAll('.linha-paciente[data-href]').forEach(linha => {
       linha.addEventListener('click', () => {

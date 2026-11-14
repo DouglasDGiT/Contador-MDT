@@ -1,6 +1,6 @@
 """
 core.py -- Lógica de negócio compartilhada entre qualquer "porta de entrada"
-(site hoje, WhatsApp futuramente). Esta camada não sabe nada sobre HTTP,
+(hoje, o site). Esta camada não sabe nada sobre HTTP,
 formulários ou mensagens -- só recebe SINAN + caminho de uma foto, e
 devolve um resultado estruturado.
 """
@@ -99,7 +99,10 @@ def processar_envio_foto(paciente_id, caminho_foto_temporario, modelo_forcado=No
                         "para verificar o cadastro.",
         }
 
-    fase = calcular_fase_atual(paciente["data_inicio_tratamento"])
+    fase = calcular_fase_atual(
+        paciente["data_inicio_tratamento"],
+        fase_inicial=paciente.get("fase_inicial") or "fase_intensiva",
+    )
     modelo = modelo_forcado or decidir_modelo_esperado(paciente, fase)
 
     if modelo is None:

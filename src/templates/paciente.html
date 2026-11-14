@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ paciente.nome }}</title>
-  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16.png') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/x-icon" href="{{ static_v('favicon.ico') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ static_v('favicon-32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ static_v('favicon-16.png') }}">
+  <link rel="apple-touch-icon" href="{{ static_v('apple-touch-icon.png') }}">
+  <link rel="stylesheet" href="{{ static_v('style.css') }}">
   <style>
     @media print {
       .nao-imprimir { display: none !important; }
@@ -26,7 +26,7 @@
 
   <div class="container largo">
     <div class="barra-header nao-imprimir">
-      <a href="{{ url_for('painel') }}" class="link-voltar">&larr; Voltar ao painel</a>
+      <a href="{{ url_for('painel') }}" class="link-voltar" style="white-space: nowrap;">&larr; Voltar ao painel</a>
       <div style="display:flex; gap:10px; align-items:center;">
         <select id="filtro-periodo" class="select-bonito" style="width:auto; min-width:160px;">
           <option value="todas">Todas as datas</option>
@@ -34,7 +34,7 @@
           <option value="{{ mes }}">{{ mes }}</option>
           {% endfor %}
         </select>
-        <button onclick="imprimirComFiltro()" class="botao secundario" style="width:auto; margin-top:1;">
+        <button onclick="imprimirComFiltro()" class="botao secundario" style="width:auto; white-space:nowrap; padding:12px 22px; flex-shrink:0;">
           Imprimir relatório
         </button>
       </div>
@@ -43,11 +43,42 @@
     <h2 id="titulo-periodo-impressao" style="display:none; font-family:'Nunito',sans-serif; font-weight:800; color:var(--verde-escuro);"></h2>
 
     <h1 style="margin-top:14px;">{{ paciente.nome }}</h1>
-    <p class="subtitulo">
-      SINAN {{ paciente.id }} &middot; {{ paciente.peso }}kg &middot;
-      Início: {{ paciente.data_inicio_tratamento }} &middot;
-      Fase: {{ relatorio.fase_atual.replace('_', ' ')|capitalize }}
-    </p>
+    <div class="detalhes-paciente">
+      <div class="detalhe-item">
+        <span class="detalhe-label">SINAN</span>
+        <strong>{{ paciente.id }}</strong>
+      </div>
+
+      <div class="detalhe-item">
+        <span class="detalhe-label">Peso</span>
+        <strong>{{ paciente.peso }} kg</strong>
+      </div>
+
+      <div class="detalhe-item">
+        <span class="detalhe-label">
+          {% if paciente.fase_inicial == 'fase_manutencao' %}Início do acompanhamento (manutenção){% else %}Início{% endif %}
+        </span>
+        <strong>{{ paciente.data_inicio_tratamento[8:10] }}/{{ paciente.data_inicio_tratamento[5:7] }}/{{ paciente.data_inicio_tratamento[0:4] }}</strong>
+      </div>
+
+  {% if paciente.data_inicio_definitivo %}
+  <div class="detalhe-item">
+    <span class="detalhe-label">Início definitivo do tratamento</span>
+    <strong>{{ paciente.data_inicio_definitivo[8:10] }}/{{ paciente.data_inicio_definitivo[5:7] }}/{{ paciente.data_inicio_definitivo[0:4] }}</strong>
+  </div>
+  {% endif %}
+
+  <div class="detalhe-item">
+    <span class="detalhe-label">Fase atual</span>
+    <strong>
+      {% if relatorio.fase_atual == "fase_manutencao" %}Fase de Manutenção{% elif relatorio.fase_atual == "fase_intensiva" %}Fase Intensiva{% else %}{{ relatorio.fase_atual.replace('_', ' ')|capitalize }}{% endif %}
+    </strong>
+  </div>
+</div>
+
+    {% if aviso %}
+      <div class="mensagem-erro nao-imprimir">{{ aviso }}</div>
+    {% endif %}
 
     <table style="margin-bottom:28px;">
       <thead>
@@ -114,7 +145,7 @@
     {% endif %}
   </div>
 
-  <script src="{{ url_for('static', filename='select_custom.js') }}"></script>
+  <script src="{{ static_v('select_custom.js') }}"></script>
   <script>
     function imprimirComFiltro() {
       const select = document.getElementById('filtro-periodo');
@@ -136,7 +167,7 @@
 
       if (titulo) {
         titulo.textContent = periodo === 'todas'
-          ? 'Relatório completo -- todas as datas'
+          ? 'Relatório completo - todas as datas'
           : `Relatório do mês: ${periodo}`;
         titulo.style.display = 'block';
       }

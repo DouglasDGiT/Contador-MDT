@@ -42,11 +42,28 @@ def _dias_de_tratamento(data_inicio, data_referencia):
     return dias
 
 
-def calcular_fase_atual(data_inicio, data_referencia=None, tabela=None):
+def _dias_fase_intensiva(tabela, fase_inicial):
+    """
+    Quantos dias de fase intensiva ainda contam para este paciente.
+    Quem já entra no monitoramento direto na manutenção não tem fase
+    intensiva a cumprir (0 dias) -- a data de início dele marca o começo
+    da manutenção, e todo o restante do cálculo (fase atual, dose esperada,
+    fim do tratamento) passa a ser contado a partir dali.
+    """
+    if fase_inicial == "fase_manutencao":
+        return 0
+    return tabela["fase_intensiva"]["duracao_meses"] * 30
+
+
+def calcular_fase_atual(data_inicio, data_referencia=None, tabela=None,
+                        fase_inicial="fase_intensiva"):
     """
     Determina em que fase do tratamento o paciente está, com base em
     quantos dias (inclusive o dia de início) se passaram.
     Retorna "fase_intensiva", "fase_manutencao" ou "tratamento_concluido".
+
+    fase_inicial: fase em que o monitoramento do paciente começou (a data
+    de início se refere ao começo dessa fase).
     """
     if tabela is None:
         tabela = carregar_tabela_dosagem()
@@ -55,7 +72,7 @@ def calcular_fase_atual(data_inicio, data_referencia=None, tabela=None):
 
     dias_passados = _dias_de_tratamento(data_inicio, data_referencia)
 
-    dias_fase_intensiva = tabela["fase_intensiva"]["duracao_meses"] * 30
+    dias_fase_intensiva = _dias_fase_intensiva(tabela, fase_inicial)
     dias_fase_manutencao = tabela["fase_manutencao"]["duracao_meses"] * 30
 
     if dias_passados <= dias_fase_intensiva:
@@ -67,7 +84,8 @@ def calcular_fase_atual(data_inicio, data_referencia=None, tabela=None):
 
 
 def calcular_dose_esperada_acumulada(peso, data_inicio, data_referencia=None,
-                                       tabela=None, esquema_manutencao=None):
+                                       tabela=None, esquema_manutencao=None,
+                                       fase_inicial="fase_intensiva"):
     """
     Calcula o total esperado de comprimidos (por modelo) desde o início
     do tratamento até a data de referência, considerando a transição
@@ -76,6 +94,10 @@ def calcular_dose_esperada_acumulada(peso, data_inicio, data_referencia=None,
     esquema_manutencao: o esquema PRESCRITO PELO MÉDICO (ex: {"rh_300_150": 1}),
         obrigatório se o período incluir dias de fase de manutenção.
         Use dosagem.listar_opcoes_manutencao(peso) para ver as opções válidas.
+
+    fase_inicial: fase em que o monitoramento começou. Com "fase_manutencao",
+        não há dias de fase intensiva: a data de início já é o começo da
+        manutenção.
 
     Retorna: {"total_esperado": {...}, "dias_passados": N, "fase_atual": "..."}
     """
@@ -86,7 +108,7 @@ def calcular_dose_esperada_acumulada(peso, data_inicio, data_referencia=None,
 
     dias_passados = _dias_de_tratamento(data_inicio, data_referencia)
 
-    dias_fase_intensiva = tabela["fase_intensiva"]["duracao_meses"] * 30
+    dias_fase_intensiva = _dias_fase_intensiva(tabela, fase_inicial)
     dias_fase_manutencao = tabela["fase_manutencao"]["duracao_meses"] * 30
 
     total = {}
@@ -118,7 +140,7 @@ def calcular_dose_esperada_acumulada(peso, data_inicio, data_referencia=None,
         for modelo, qtd in esquema_manutencao.items():
             total[modelo] = total.get(modelo, 0) + qtd * dias_manutencao
 
-    fase_atual = calcular_fase_atual(data_inicio, data_referencia, tabela)
+    fase_atual = calcular_fase_atual(data_inicio, data_referencia, tabela, fase_inicial=fase_inicial)
 
     return {
         "total_esperado": total,
@@ -266,7 +288,8 @@ def calcular_adesao(paciente_id, data_referencia=None, tabela=None):
 
     esperado = calcular_dose_esperada_acumulada(
         paciente["peso"], paciente["data_inicio_tratamento"], data_referencia,
-        tabela=tabela, esquema_manutencao=paciente.get("esquema_manutencao")
+        tabela=tabela, esquema_manutencao=paciente.get("esquema_manutencao"),
+        fase_inicial=paciente.get("fase_inicial") or "fase_intensiva",
     )
     realizado = somar_tomados_historico(paciente_id, data_limite=data_referencia)
 
@@ -289,7 +312,7 @@ def calcular_adesao(paciente_id, data_referencia=None, tabela=None):
         relatorio["por_modelo"][modelo] = {
             "esperado": qtd_esperada,
             "realizado": qtd_realizada,
-            "percentual_aderencia": round(pct, 1) if pct is not None else None,
+            "percentual_aderencia": min(100.0, round(pct, 1)) if pct is not None else None,
         }
 
     return relatorio

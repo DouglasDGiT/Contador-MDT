@@ -1,55 +1,279 @@
+
 <!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <title>Enviar foto da cartela</title>
-  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16.png') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <link rel="icon" type="image/x-icon"
+        href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="icon" type="image/png" sizes="32x32"
+        href="{{ url_for('static', filename='favicon-32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16"
+        href="{{ url_for('static', filename='favicon-16.png') }}">
+  <link rel="apple-touch-icon"
+        href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+
+<body class="pagina-envio">
+
   <div class="topo">
     <div class="pilula-icone"></div>
     <span>Contador MDT</span>
   </div>
 
-  <div class="container">
-    <h1>Enviar foto da cartela</h1>
-    <p class="subtitulo">Tire uma foto da cartela do medicamento para registrar o tratamento.</p>
+  <main class="container container-envio">
 
-    <form action="{{ url_for('enviar_foto') }}" method="post" enctype="multipart/form-data">
-      <label class="primeiro" for="identificacao">Número do SINAN ou nome completo</label>
-      <input type="text" id="identificacao" name="identificacao"
-             placeholder="Digite o SINAN ou seu nome completo" required>
+    <form
+      action="{{ url_for('enviar_foto') }}"
+      method="post"
+      enctype="multipart/form-data"
+      class="formulario-envio"
+    >
 
-      <label for="foto">Foto da cartela</label>
-      <label class="campo-foto" for="foto">
-        <div class="rotulo-foto">Toque para tirar ou escolher a foto</div>
-        <div class="ajuda-foto">A cartela inteira precisa aparecer na foto</div>
-        <input type="file" id="foto" name="foto" accept="image/*" required>
-        <img class="preview-foto" id="preview">
-      </label>
+      <!-- INFORMAÇÕES -->
+      <section class="envio-informacoes">
 
-      <button type="submit">Enviar</button>
+        <h1>Enviar foto da cartela</h1>
+
+        <p class="subtitulo">
+          Tire uma foto da cartela do medicamento
+          para registrar o tratamento.
+        </p>
+
+        <label class="primeiro" for="identificacao">
+          Número do SINAN ou nome completo
+        </label>
+
+        <input
+          type="text"
+          id="identificacao"
+          name="identificacao"
+          placeholder="Digite o número do SINAN ou seu nome completo"
+          autocomplete="off"
+          required
+        >
+
+        <div class="envio-orientacao">
+          <strong>Uma cartela por fotografia</strong>
+          <p>
+            Fotografe a cartela inteira, mantendo todas
+            as bordas visíveis e evitando reflexos.
+          </p>
+        </div>
+
+        <button type="submit" class="botao-enviar-foto">
+          Enviar fotografia
+        </button>
+
+        <div class="rodape-link">
+          <a href="{{ url_for('login_agente') }}">
+            Sou profissional da saúde
+          </a>
+        </div>
+
+      </section>
+
+      <!-- FOTOGRAFIA -->
+      <section class="envio-imagem">
+
+        <label class="primeiro" id="titulo-foto">
+          Foto da cartela
+        </label>
+
+        <!-- Área clicável -->
+        <div
+          class="campo-foto campo-foto-envio"
+          id="area-foto"
+          role="button"
+          tabindex="0"
+          aria-labelledby="titulo-foto"
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="menu-foto"
+        >
+
+          <div class="envio-preview-area">
+
+            <div id="foto-placeholder" class="foto-placeholder">
+              <span class="foto-placeholder-icone">📷</span>
+              <strong>Selecionar fotografia</strong>
+              <span>
+                Toque para tirar ou escolher uma foto
+              </span>
+            </div>
+
+            <img
+              class="preview-foto"
+              id="preview"
+              alt="Pré-visualização da cartela selecionada"
+            >
+
+          </div>
+
+          <div class="rotulo-foto" id="rotulo-foto">
+            Tirar ou escolher foto
+          </div>
+
+          <div class="ajuda-foto">
+            A cartela inteira precisa aparecer na imagem.
+          </div>
+
+        </div>
+
+        <!-- Menu personalizado -->
+        <div id="menu-foto" class="menu-foto" hidden>
+
+          <button
+            type="button"
+            id="opcao-camera"
+            class="menu-foto-opcao"
+          >
+            📷 Tirar foto
+          </button>
+
+          <button
+            type="button"
+            id="opcao-galeria"
+            class="menu-foto-opcao"
+          >
+            🖼️ Escolher da galeria
+          </button>
+
+        </div>
+
+        <!-- Arquivo enviado ao Flask -->
+        <input
+          type="file"
+          id="foto"
+          name="foto"
+          accept="image/*"
+          required
+          class="input-foto-oculto"
+        >
+
+        <!-- Captura pela câmera -->
+        <input
+          type="file"
+          id="foto-camera"
+          accept="image/*"
+          capture="environment"
+          class="input-foto-oculto"
+        >
+
+      </section>
+
     </form>
 
-    <div class="rodape-link">
-      <a href="{{ url_for('login_agente') }}">Sou agente de saúde</a>
-    </div>
-  </div>
+  </main>
 
   <script>
     const input = document.getElementById('foto');
+    const camera = document.getElementById('foto-camera');
+
     const preview = document.getElementById('preview');
+    const placeholder = document.getElementById('foto-placeholder');
+    const rotulo = document.getElementById('rotulo-foto');
+
+    const areaFoto = document.getElementById('area-foto');
+    const menu = document.getElementById('menu-foto');
+
+    const opcaoCamera = document.getElementById('opcao-camera');
+    const opcaoGaleria = document.getElementById('opcao-galeria');
+
+    let previewUrl = null;
+
+    function alternarMenu(aberto) {
+      menu.hidden = !aberto;
+      areaFoto.setAttribute('aria-expanded', String(aberto));
+    }
+
+    // Abrir ou fechar menu
+    areaFoto.addEventListener('click', () => {
+      alternarMenu(menu.hidden);
+    });
+
+    // Permitir uso pelo teclado
+    areaFoto.addEventListener('keydown', (evento) => {
+      if (evento.key === 'Enter' || evento.key === ' ') {
+        evento.preventDefault();
+        alternarMenu(menu.hidden);
+      }
+    });
+
+    // Abrir câmera
+    opcaoCamera.addEventListener('click', () => {
+      alternarMenu(false);
+      camera.click();
+    });
+
+    // Abrir galeria
+    opcaoGaleria.addEventListener('click', () => {
+      alternarMenu(false);
+      input.click();
+    });
+
+    // Foto capturada pela câmera
+    camera.addEventListener('change', () => {
+      if (!camera.files.length) return;
+
+      const transferencia = new DataTransfer();
+      transferencia.items.add(camera.files[0]);
+
+      input.files = transferencia.files;
+      atualizarPreview(input.files[0]);
+    });
+
+    // Foto escolhida da galeria
     input.addEventListener('change', () => {
-      if (input.files && input.files[0]) {
-        preview.src = URL.createObjectURL(input.files[0]);
-        preview.style.display = 'block';
+      atualizarPreview(input.files[0]);
+    });
+
+    function atualizarPreview(arquivo) {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        previewUrl = null;
+      }
+
+      if (!arquivo) {
+        preview.removeAttribute('src');
+        preview.style.display = 'none';
+        placeholder.style.display = 'flex';
+        rotulo.textContent = 'Tirar ou escolher foto';
+        return;
+      }
+
+      previewUrl = URL.createObjectURL(arquivo);
+
+      preview.src = previewUrl;
+      preview.style.display = 'block';
+
+      placeholder.style.display = 'none';
+      rotulo.textContent = 'Trocar fotografia';
+    }
+
+    // Fechar menu ao tocar fora
+    document.addEventListener('click', (evento) => {
+      if (
+        !areaFoto.contains(evento.target) &&
+        !menu.contains(evento.target)
+      ) {
+        alternarMenu(false);
+      }
+    });
+
+    // Fechar menu com Escape
+    document.addEventListener('keydown', (evento) => {
+      if (evento.key === 'Escape') {
+        alternarMenu(false);
       }
     });
   </script>
+
 </body>
 </html>

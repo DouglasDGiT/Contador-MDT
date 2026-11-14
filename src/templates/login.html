@@ -1,38 +1,108 @@
+
 <!doctype html>
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Acesso do agente</title>
-  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16.png') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <title>Acesso do profissional | Contador MDT</title>
+
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
-  <div class="topo">
+
+<body class="pagina-login">
+
+  <header class="topo">
     <div class="pilula-icone"></div>
     <span>Contador MDT</span>
-  </div>
+  </header>
 
-  <div class="container">
-    <h1>Acesso do agente</h1>
-    <p class="subtitulo">Entre com a senha da equipe para consultar os pacientes.</p>
+  <main class="login-container">
+    <section class="login-card">
 
-    {% if erro %}
-      <div class="mensagem-erro">{{ erro }}</div>
-    {% endif %}
+      <div class="login-icone" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
 
-    <form method="post">
-      <label class="primeiro" for="senha">Senha</label>
-      <input type="password" id="senha" name="senha" required autofocus>
-      <button type="submit">Entrar</button>
-    </form>
+      <h1>Acesso do profissional</h1>
 
-    <div class="rodape-link">
-      <a href="{{ url_for('pagina_envio') }}">Voltar para envio de foto</a>
-    </div>
-  </div>
+      <p class="subtitulo">
+        Acesse o painel para acompanhar os pacientes
+        e consultar os relatórios de tratamento.
+      </p>
+
+      {% if erro %}
+        <div class="login-erro" role="alert">
+          {{ erro }}
+        </div>
+      {% endif %}
+
+      <form action="{{ url_for('login_agente') }}" method="post">
+
+        <label for="senha" class="primeiro">
+          Senha de acesso
+        </label>
+
+        <div class="login-campo-senha">
+          <input
+            type="password"
+            id="senha"
+            name="senha"
+            autocomplete="current-password"
+            required
+          >
+
+          <button
+            type="button"
+            class="login-ver-senha"
+            id="alternar-senha"
+            aria-label="Mostrar senha"
+            aria-pressed="false"
+          >
+            <svg viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.8"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+
+        <button type="submit" class="login-botao">
+          Entrar no painel
+        </button>
+      </form>
+
+      <div class="login-voltar">
+        <a href="{{ url_for('pagina_envio') }}">
+          ← Voltar para envio de foto
+        </a>
+      </div>
+
+    </section>
+  </main>
+
+  <script>
+    const botao = document.getElementById('alternar-senha');
+    const senha = document.getElementById('senha');
+
+    botao.addEventListener('click', () => {
+      const visivel = senha.type === 'text';
+
+      senha.type = visivel ? 'password' : 'text';
+      botao.setAttribute('aria-pressed', String(!visivel));
+      botao.setAttribute(
+        'aria-label',
+        visivel ? 'Mostrar senha' : 'Ocultar senha'
+      );
+    });
+  </script>
+
 </body>
 </html>

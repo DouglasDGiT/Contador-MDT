@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cadastrar paciente</title>
-  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
-  <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32.png') }}">
-  <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16.png') }}">
-  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="icon" type="image/x-icon" href="{{ static_v('favicon.ico') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ static_v('favicon-32.png') }}">
+  <link rel="icon" type="image/png" sizes="16x16" href="{{ static_v('favicon-16.png') }}">
+  <link rel="apple-touch-icon" href="{{ static_v('apple-touch-icon.png') }}">
+  <link rel="stylesheet" href="{{ static_v('style.css') }}">
 </head>
 <body>
   <div class="topo">
@@ -26,48 +26,132 @@
       <div class="mensagem-erro">{{ erro }}</div>
     {% endif %}
 
-    <form method="post" id="form-cadastro">
+    {% set d = dados or {} %}
+    <form method="post" id="form-cadastro"
+          data-hoje="{{ hoje }}"
+          data-fase="{{ d.get('fase_inicial', 'fase_intensiva') }}"
+          data-esquema="{{ d.get('esquema_indice', '') }}">
       <label class="primeiro" for="sinan">Número do SINAN</label>
-      <input type="text" id="sinan" name="sinan" required>
+      <input type="text" id="sinan" name="sinan" value="{{ d.get('sinan', '') }}" required>
 
       <label for="nome">Nome do paciente</label>
-      <input type="text" id="nome" name="nome" required>
+      <input type="text" id="nome" name="nome" value="{{ d.get('nome', '') }}" required>
 
       <label for="peso">Peso (kg)</label>
-      <input type="number" id="peso" name="peso" step="0.1" min="20" required>
+      <input type="number" id="peso" name="peso" step="0.1" min="20" value="{{ d.get('peso', '') }}" required>
 
-      <label for="data_inicio">Data de início do tratamento</label>
-      <input type="date" id="data_inicio" name="data_inicio">
+      <label for="fase_inicial">Fase em que o paciente entra no acompanhamento</label>
+      <select id="fase_inicial" name="fase_inicial" class="select-bonito">
+        <option value="fase_intensiva">Fase intensiva (início do tratamento)</option>
+        <option value="fase_manutencao">Fase de manutenção (já concluiu a intensiva)</option>
+      </select>
 
-      <label for="esquema_indice">Esquema de manutenção (se já prescrito)</label>
+      <label for="data_inicio" id="label-data">Data de início do tratamento</label>
+      <input type="date" id="data_inicio" name="data_inicio" value="{{ d.get('data_inicio', '') }}">
+      <p class="ajuda-campo" id="ajuda-data"></p>
+
+      <div id="campo-data-definitivo" hidden>
+          <label for="data_inicio_definitivo">Data de inicio definitivo do tratamento</label>
+          <input type="date" id="data_inicio_definitivo" name="data_inicio_definitivo" value="{{ d.get('data_inicio_definitivo', '')}}" max="{{ hoje }}">
+          <p class="ajuda-campo">Informe a data em que o paciente realmente iniciou o tratamento.</p>
+      </div>
+
+      <label for="esquema_indice" id="label-esquema">Esquema de manutenção (se já prescrito)</label>
       <select id="esquema_indice" name="esquema_indice" class="select-bonito">
         <option value="">Ainda não definido</option>
       </select>
+      <div class="mensagem-erro no-campo" id="erro-esquema" hidden></div>
 
       <button type="submit">Cadastrar</button>
     </form>
   </div>
 
-  <script src="{{ url_for('static', filename='select_custom.js') }}"></script>
+  <script src="{{ static_v('select_custom.js') }}"></script>
   <script>
+    const form = document.getElementById('form-cadastro');
     const pesoInput = document.getElementById('peso');
+    const faseSelect = document.getElementById('fase_inicial');
     const select = document.getElementById('esquema_indice');
+    const dataInput = document.getElementById('data_inicio');
+    const labelData = document.getElementById('label-data');
+    const ajudaData = document.getElementById('ajuda-data');
+    const labelEsquema = document.getElementById('label-esquema');
+    const erroEsquema = document.getElementById('erro-esquema');
+    const campoDataDefinitivo = document.getElementById('campo-data-definitivo');
+
+    // Guarda a data digitada para a fase intensiva, para devolvê-la se o
+    // agente trocar para manutenção (data travada em hoje) e voltar.
+    let dataIntensiva = dataInput.value;
+    dataInput.addEventListener('input', () => {
+      if (!manutencaoSelecionada()) dataIntensiva = dataInput.value;
+    });
+
+    function manutencaoSelecionada() {
+      return faseSelect.value === 'fase_manutencao';
+    }
+
+    function textoPlaceholderEsquema() {
+      return manutencaoSelecionada() ? 'Selecione o esquema prescrito' : 'Ainda não definido';
+    }
+
+    // Os textos da data e do esquema mudam conforme a fase escolhida:
+    // na manutenção, a data passa a ser o início DA MANUTENÇÃO e o esquema
+    // vira obrigatório (sem ele não dá para calcular a dose esperada).
+    function atualizarTextosFase() {
+      const manut = manutencaoSelecionada();
+      campoDataDefinitivo.hidden = false;
+
+      if (manut) {
+        // Na manutenção o acompanhamento começa no dia do cadastro (dia 1);
+        // dias anteriores não são contados. A data fica travada em hoje.
+        dataInput.value = form.dataset.hoje;
+        dataInput.readOnly = true;
+        labelData.textContent = 'Início do acompanhamento na manutenção (dia do cadastro)';
+        ajudaData.textContent = 'O acompanhamento da manutenção começa hoje, no dia do cadastro (dia 1). Dias anteriores não são contados.';
+      } else {
+        dataInput.readOnly = false;
+        dataInput.value = dataIntensiva;
+        labelData.textContent = 'Data de início do tratamento';
+        ajudaData.textContent = 'Se o paciente já estava em tratamento antes de ser cadastrado, informe a data real de início (não precisa ser hoje). Em branco, vale hoje.';
+      }
+
+      labelEsquema.textContent = manut
+        ? 'Esquema de manutenção prescrito (obrigatório)'
+        : 'Esquema de manutenção (se já prescrito)';
+
+      if (select.options[0]) {
+        select.options[0].textContent = textoPlaceholderEsquema();
+      }
+      if (select._selectBonito) {
+        atualizarOpcoesSelectBonito(select);
+      }
+    }
 
     async function atualizarOpcoes() {
+      select.innerHTML = '';
+      const placeholder = document.createElement('option');
+      placeholder.value = '';
+      placeholder.textContent = textoPlaceholderEsquema();
+      select.appendChild(placeholder);
+
       const peso = pesoInput.value;
-      select.innerHTML = '<option value="">Ainda não definido</option>';
-      if (!peso) return;
+      if (peso) {
+        try {
+          const resp = await fetch(`/agente/opcoes_manutencao?peso=${peso}`);
+          const dados = await resp.json();
 
-      const resp = await fetch(`/agente/opcoes_manutencao?peso=${peso}`);
-      const dados = await resp.json();
-
-      dados.opcoes.forEach((opcao, i) => {
-        const texto = Object.entries(opcao).map(([m, q]) => `${q}x ${m}`).join(' + ');
-        const opt = document.createElement('option');
-        opt.value = i;
-        opt.textContent = texto;
-        select.appendChild(opt);
-      });
+          dados.opcoes.forEach((opcao, i) => {
+            const texto = Object.entries(opcao).map(([m, q]) => `${q}x ${m}`).join(' + ');
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = texto;
+            select.appendChild(opt);
+          });
+        } catch (e) {
+          // Sem rede / resposta inválida: fica só o placeholder, e o envio
+          // continua sendo conferido pelo servidor.
+        }
+      }
 
       // Reconstrói o dropdown customizado com as novas opções
       if (select._selectBonito) {
@@ -76,6 +160,41 @@
     }
 
     pesoInput.addEventListener('change', atualizarOpcoes);
+    faseSelect.addEventListener('change', () => {
+      atualizarTextosFase();
+      erroEsquema.hidden = true;
+    });
+    select.addEventListener('change', () => { erroEsquema.hidden = true; });
+
+    form.addEventListener('submit', (evento) => {
+      if (manutencaoSelecionada() && !select.value) {
+        evento.preventDefault();
+        erroEsquema.textContent = pesoInput.value
+          ? 'Selecione o esquema de manutenção prescrito pelo médico.'
+          : 'Informe o peso para ver as opções do esquema de manutenção.';
+        erroEsquema.hidden = false;
+        erroEsquema.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+
+    // Estado inicial. Se a página voltou do servidor com erro, restaura a
+    // fase e o esquema escolhidos (as opções do esquema dependem do peso,
+    // então precisam ser buscadas de novo antes de selecionar uma).
+    (async function iniciar() {
+      faseSelect.value = form.dataset.fase || 'fase_intensiva';
+      atualizarTextosFase();
+
+      if (pesoInput.value) {
+        await atualizarOpcoes();
+        const esquemaSalvo = form.dataset.esquema;
+        if (esquemaSalvo) {
+          select.value = esquemaSalvo;
+          if (select._selectBonito) {
+            atualizarOpcoesSelectBonito(select);
+          }
+        }
+      }
+    })();
   </script>
 </body>
 </html>
