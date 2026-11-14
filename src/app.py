@@ -248,7 +248,7 @@ def cadastro():
     sinan = request.form.get("sinan", "").strip()
     nome = request.form.get("nome", "").strip()
     peso = request.form.get("peso", "").strip()
-    data_inicio = request.form.get("data_inicio", "").strip() or str(hoje_brasil())
+    data_inicio = str(hoje_brasil())
     data_inicio_definitivo = (request.form.get("data_inicio_definitivo","").strip() or None)
     esquema_indice = request.form.get("esquema_indice", "")
     fase_inicial = request.form.get("fase_inicial", "fase_intensiva")
@@ -260,8 +260,6 @@ def cadastro():
     # (dia 1 do acompanhamento): nenhum dia anterior é contado. Por isso a
     # data enviada pelo formulário é ignorada e vale a de hoje (fuso do
     # Brasil) -- assim não depende de o agente escolher a data certa.
-    if fase_inicial == "fase_manutencao":
-        data_inicio = str(hoje_brasil())
 
     # Validação da data definitiva (apenas informativa)
     if data_inicio_definitivo:

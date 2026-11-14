@@ -10,59 +10,98 @@
   <link rel="apple-touch-icon" href="{{ static_v('apple-touch-icon.png') }}">
   <link rel="stylesheet" href="{{ static_v('style.css') }}">
 </head>
-<body>
+<body class="pagina-cadastro">
   <div class="topo">
     <div class="pilula-icone"></div>
     <span>Contador MDT</span>
   </div>
 
-  <div class="container">
+  <div class="container cadastro-container">
     <a href="{{ url_for('painel') }}" class="link-voltar">&larr; Voltar ao painel</a>
 
     <h1 style="margin-top:14px;">Cadastrar paciente</h1>
-    <p class="subtitulo">Preencha no dia em que o paciente recebe a receita.</p>
+    <p class="subtitulo">Preencha os dados para iniciar o acompanhamento.</p>
 
     {% if erro %}
       <div class="mensagem-erro">{{ erro }}</div>
     {% endif %}
 
     {% set d = dados or {} %}
-    <form method="post" id="form-cadastro"
+    <form method="post" id="form-cadastro" class="cadastro-card"
           data-hoje="{{ hoje }}"
           data-fase="{{ d.get('fase_inicial', 'fase_intensiva') }}"
           data-esquema="{{ d.get('esquema_indice', '') }}">
-      <label class="primeiro" for="sinan">Número do SINAN</label>
-      <input type="text" id="sinan" name="sinan" value="{{ d.get('sinan', '') }}" required>
 
-      <label for="nome">Nome do paciente</label>
-      <input type="text" id="nome" name="nome" value="{{ d.get('nome', '') }}" required>
+      <!-- DADOS DO PACIENTE -->
+      <section class="cadastro-secao">
+        <h2>Dados do paciente</h2>
+        <p class="cadastro-descricao">Informações de identificação do paciente.</p>
 
-      <label for="peso">Peso (kg)</label>
-      <input type="number" id="peso" name="peso" step="0.1" min="20" value="{{ d.get('peso', '') }}" required>
+        <div class="cadastro-grid">
+          <div class="cadastro-campo">
+            <label for="sinan">Número do SINAN</label>
+            <input type="text" id="sinan" name="sinan"
+                   placeholder="Digite o SINAN"
+                   value="{{ d.get('sinan', '') }}" required>
+          </div>
 
-      <label for="fase_inicial">Fase em que o paciente entra no acompanhamento</label>
-      <select id="fase_inicial" name="fase_inicial" class="select-bonito">
-        <option value="fase_intensiva">Fase intensiva (início do tratamento)</option>
-        <option value="fase_manutencao">Fase de manutenção (já concluiu a intensiva)</option>
-      </select>
+          <div class="cadastro-campo">
+            <label for="peso">Peso (kg)</label>
+            <input type="number" id="peso" name="peso" step="0.1" min="20"
+                   placeholder="Ex.: 65,5"
+                   value="{{ d.get('peso', '') }}" required>
+          </div>
 
-      <label for="data_inicio" id="label-data">Data de início do tratamento</label>
-      <input type="date" id="data_inicio" name="data_inicio" value="{{ d.get('data_inicio', '') }}">
-      <p class="ajuda-campo" id="ajuda-data"></p>
+          <div class="cadastro-campo campo-completo">
+            <label for="nome">Nome do paciente</label>
+            <input type="text" id="nome" name="nome"
+                   placeholder="Nome completo"
+                   value="{{ d.get('nome', '') }}" required>
+          </div>
+        </div>
+      </section>
 
-      <div id="campo-data-definitivo" hidden>
-          <label for="data_inicio_definitivo">Data de inicio definitivo do tratamento</label>
-          <input type="date" id="data_inicio_definitivo" name="data_inicio_definitivo" value="{{ d.get('data_inicio_definitivo', '')}}" max="{{ hoje }}">
-          <p class="ajuda-campo">Informe a data em que o paciente realmente iniciou o tratamento.</p>
+      <!-- DADOS DO ACOMPANHAMENTO -->
+      <section class="cadastro-secao">
+        <h2>Dados do acompanhamento</h2>
+        <p class="cadastro-descricao">Informações sobre o tratamento e a fase atual.</p>
+
+        <div class="cadastro-grid">
+          <div class="cadastro-campo campo-completo">
+            <label for="fase_inicial">Fase em que o paciente entra no acompanhamento</label>
+            <select id="fase_inicial" name="fase_inicial" class="select-bonito">
+              <option value="fase_intensiva">Fase intensiva (início do tratamento)</option>
+              <option value="fase_manutencao">Fase de manutenção (já concluiu a intensiva)</option>
+            </select>
+          </div>
+
+          <div class="cadastro-campo">
+            <label for="data_inicio" id="label-data">Data de início do acompanhamento</label>
+            <input type="date" id="data_inicio" name="data_inicio"
+                   value="{{ hoje }}" readonly>
+            <p class="ajuda-campo" id="ajuda-data">O acompanhamento começa automaticamente na data do cadastro do paciente.</p>
+          </div>
+
+          <div class="cadastro-campo" id="campo-data-definitivo">
+            <label for="data_inicio_definitivo">Data de início definitivo do tratamento</label>
+            <input type="date" id="data_inicio_definitivo" name="data_inicio_definitivo"
+                   value="{{ d.get('data_inicio_definitivo', '') }}" max="{{ hoje }}">
+            <p class="ajuda-campo">Informe a data em que o paciente realmente iniciou o tratamento.</p>
+          </div>
+
+          <div class="cadastro-campo campo-completo">
+            <label for="esquema_indice" id="label-esquema">Esquema de manutenção (se já prescrito)</label>
+            <select id="esquema_indice" name="esquema_indice" class="select-bonito">
+              <option value="">Ainda não definido</option>
+            </select>
+            <div class="mensagem-erro no-campo" id="erro-esquema" hidden></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="cadastro-acoes">
+        <button type="submit">Cadastrar paciente</button>
       </div>
-
-      <label for="esquema_indice" id="label-esquema">Esquema de manutenção (se já prescrito)</label>
-      <select id="esquema_indice" name="esquema_indice" class="select-bonito">
-        <option value="">Ainda não definido</option>
-      </select>
-      <div class="mensagem-erro no-campo" id="erro-esquema" hidden></div>
-
-      <button type="submit">Cadastrar</button>
     </form>
   </div>
 
@@ -79,13 +118,6 @@
     const erroEsquema = document.getElementById('erro-esquema');
     const campoDataDefinitivo = document.getElementById('campo-data-definitivo');
 
-    // Guarda a data digitada para a fase intensiva, para devolvê-la se o
-    // agente trocar para manutenção (data travada em hoje) e voltar.
-    let dataIntensiva = dataInput.value;
-    dataInput.addEventListener('input', () => {
-      if (!manutencaoSelecionada()) dataIntensiva = dataInput.value;
-    });
-
     function manutencaoSelecionada() {
       return faseSelect.value === 'fase_manutencao';
     }
@@ -94,27 +126,19 @@
       return manutencaoSelecionada() ? 'Selecione o esquema prescrito' : 'Ainda não definido';
     }
 
-    // Os textos da data e do esquema mudam conforme a fase escolhida:
-    // na manutenção, a data passa a ser o início DA MANUTENÇÃO e o esquema
-    // vira obrigatório (sem ele não dá para calcular a dose esperada).
     function atualizarTextosFase() {
       const manut = manutencaoSelecionada();
+
+      // A data definitiva aparece nas duas fases.
       campoDataDefinitivo.hidden = false;
 
-      if (manut) {
-        // Na manutenção o acompanhamento começa no dia do cadastro (dia 1);
-        // dias anteriores não são contados. A data fica travada em hoje.
-        dataInput.value = form.dataset.hoje;
-        dataInput.readOnly = true;
-        labelData.textContent = 'Início do acompanhamento na manutenção (dia do cadastro)';
-        ajudaData.textContent = 'O acompanhamento da manutenção começa hoje, no dia do cadastro (dia 1). Dias anteriores não são contados.';
-      } else {
-        dataInput.readOnly = false;
-        dataInput.value = dataIntensiva;
-        labelData.textContent = 'Data de início do tratamento';
-        ajudaData.textContent = 'Se o paciente já estava em tratamento antes de ser cadastrado, informe a data real de início (não precisa ser hoje). Em branco, vale hoje.';
-      }
+      // O acompanhamento sempre começa no dia do cadastro.
+      dataInput.value = form.dataset.hoje;
+      dataInput.readOnly = true;
+      labelData.textContent = 'Data de início do acompanhamento';
+      ajudaData.textContent = 'O acompanhamento começa automaticamente na data do cadastro do paciente.';
 
+      // O esquema prescrito é obrigatório para a fase de manutenção.
       labelEsquema.textContent = manut
         ? 'Esquema de manutenção prescrito (obrigatório)'
         : 'Esquema de manutenção (se já prescrito)';
@@ -137,7 +161,7 @@
       const peso = pesoInput.value;
       if (peso) {
         try {
-          const resp = await fetch(`/agente/opcoes_manutencao?peso=${peso}`);
+          const resp = await fetch(`/agente/opcoes_manutencao?peso=${encodeURIComponent(peso)}`);
           const dados = await resp.json();
 
           dados.opcoes.forEach((opcao, i) => {
@@ -148,12 +172,10 @@
             select.appendChild(opt);
           });
         } catch (e) {
-          // Sem rede / resposta inválida: fica só o placeholder, e o envio
-          // continua sendo conferido pelo servidor.
+          // Sem rede ou resposta inválida: o servidor valida o envio.
         }
       }
 
-      // Reconstrói o dropdown customizado com as novas opções
       if (select._selectBonito) {
         atualizarOpcoesSelectBonito(select);
       }
@@ -164,7 +186,9 @@
       atualizarTextosFase();
       erroEsquema.hidden = true;
     });
-    select.addEventListener('change', () => { erroEsquema.hidden = true; });
+    select.addEventListener('change', () => {
+      erroEsquema.hidden = true;
+    });
 
     form.addEventListener('submit', (evento) => {
       if (manutencaoSelecionada() && !select.value) {
@@ -177,12 +201,14 @@
       }
     });
 
-    // Estado inicial. Se a página voltou do servidor com erro, restaura a
-    // fase e o esquema escolhidos (as opções do esquema dependem do peso,
-    // então precisam ser buscadas de novo antes de selecionar uma).
+    // Restaura fase e esquema se o servidor devolver o formulário com erro.
     (async function iniciar() {
       faseSelect.value = form.dataset.fase || 'fase_intensiva';
       atualizarTextosFase();
+
+      if (faseSelect._selectBonito) {
+        atualizarOpcoesSelectBonito(faseSelect);
+      }
 
       if (pesoInput.value) {
         await atualizarOpcoes();

@@ -1056,3 +1056,177 @@ input[readonly] {
   }
 }
 
+/* =========================================
+   CADASTRO DE PACIENTES
+   ========================================= */
+
+.pagina-cadastro .cadastro-container {
+    max-width: 850px;
+    margin: 0 auto;
+    padding: 24px 24px 60px;
+}
+
+/* Card principal do formulário */
+.pagina-cadastro .cadastro-card {
+    background: var(--fundo-card);
+    border: 1px solid var(--borda);
+    border-radius: 22px;
+    box-shadow: var(--sombra);
+    padding: 30px;
+}
+
+/* Seções do formulário */
+.pagina-cadastro .cadastro-secao {
+    margin: 0;
+    padding: 0;
+}
+
+.pagina-cadastro .cadastro-secao + .cadastro-secao {
+    margin-top: 26px;
+    padding-top: 24px;
+    border-top: 1px solid var(--borda);
+}
+
+.pagina-cadastro .cadastro-secao h2 {
+    color: var(--verde-escuro);
+    font-size: 1.15rem;
+    font-weight: 800;
+    margin: 0 0 4px;
+}
+
+.pagina-cadastro .cadastro-descricao {
+    color: var(--texto-suave);
+    font-size: 0.85rem;
+    margin: 0 0 20px;
+}
+
+/* Grid de duas colunas */
+.pagina-cadastro .cadastro-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    align-items: start;
+}
+
+.pagina-cadastro .campo-completo {
+    grid-column: 1 / -1;
+}
+
+/* Cada campo tem seu próprio agrupamento */
+.pagina-cadastro .cadastro-campo {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    min-width: 0;
+}
+
+.pagina-cadastro .cadastro-campo[hidden] {
+    display: none;
+}
+
+/* Padronização dos rótulos */
+.pagina-cadastro .cadastro-campo label {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+/* Inputs e selects com a mesma altura */
+.pagina-cadastro .cadastro-campo input,
+.pagina-cadastro .cadastro-campo select {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    margin: 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    font-size: 0.92rem;
+}
+
+/* Evita o espaçamento excessivo do dropdown customizado */
+.pagina-cadastro .cadastro-campo button {
+    margin: 0;
+}
+
+/* Campo de data bloqueado */
+.pagina-cadastro input[readonly] {
+    background: var(--fundo);
+    color: var(--texto-suave);
+    cursor: not-allowed;
+}
+
+/* Textos de ajuda */
+.pagina-cadastro .ajuda-campo {
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--texto-suave);
+    margin: 0;
+}
+
+/* Botão de cadastro */
+.pagina-cadastro .cadastro-acoes {
+    margin-top: 28px;
+    padding-top: 22px;
+    border-top: 1px solid var(--borda);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.pagina-cadastro .cadastro-acoes button {
+    width: auto;
+    min-width: 220px;
+    margin: 0;
+    padding: 14px 24px;
+    border-radius: 999px;
+    background: var(--verde-escuro);
+    color: #fff;
+    font-weight: 700;
+}
+
+.pagina-cadastro .cadastro-acoes button:hover {
+    background: #163C2F;
+}
+
+/* =========================================
+   RESPONSIVIDADE - CELULAR
+   ========================================= */
+
+@media (max-width: 600px) {
+
+  .pagina-cadastro .cadastro-container {
+      width: 100%;
+      padding: 16px 14px 40px;
+  }
+
+  .pagina-cadastro .cadastro-card {
+       padding: 20px 16px;
+      border-radius: 18px;
+  }
+
+  .pagina-cadastro .cadastro-grid {
+      grid-template-columns: 1fr;
+      gap: 17px;
+  }
+
+  .pagina-cadastro .cadastro-secao + .cadastro-secao {
+      margin-top: 22px;
+      padding-top: 22px;
+  }
+
+  .pagina-cadastro .cadastro-campo input,
+  .pagina-cadastro .cadastro-campo select {
+      min-height: 48px;
+      font-size: 16px;
+  }
+
+  .pagina-cadastro .cadastro-acoes button {
+      width: 100%;
+      min-width: 0;
+  }
+
+  .pagina-cadastro h1 {
+      font-size: 1.55rem;
+  }
+}
+
